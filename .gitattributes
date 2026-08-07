@@ -1,0 +1,10 @@
+# gm/ holds GM-only material, encrypted via git-crypt.
+# NOTE: until `git-crypt init` has been run locally, these filters are
+# inert and gm/** commits as PLAINTEXT — see README.md § git-crypt.
+gm/** filter=git-crypt diff=git-crypt
+gm/README.md !filter !diff
+gm/secrets/.gitkeep !filter !diff
+
+# The example campaign's gm/ directory is demo content and stays plaintext
+# on purpose, so the example remains readable without a key.
+examples/** !filter !diff
