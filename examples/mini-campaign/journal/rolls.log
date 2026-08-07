@@ -1,0 +1,6 @@
+2026-08-07T18:48:50Z | 2d6+2 | dice=[3,3] | total=8 | reason=Probe: Geist (Kaya) — Spuren in Almas Hütte lesen, Schwierigkeit Normal 9
+2026-08-07T18:48:50Z | oracle:yesno(likely) | dice=[12] | total=12 | result=Yes-but | reason=Führen die Schleifspuren Richtung Moor?
+2026-08-07T18:48:50Z | table:komplikationen | dice=[2] | total=2 | result=Etwas geht zu Bruch oder verloren – ein Ausrüstungsgegenstand ist betroffen. | reason=Ereignis auf dem Weg ins Moor
+2026-08-07T18:48:50Z | 2d6+1 | dice=[3,1] | total=5 | reason=Probe: Körper (Kaya) — dem einbrechenden Moorboden ausweichen, Schwierigkeit Normal 9
+2026-08-07T18:48:50Z | oracle:yesno(unlikely) | dice=[10] | total=10 | result=No | reason=Ist Alma unverletzt?
+2026-08-07T18:48:50Z | 2d6+0 | dice=[3,2] | total=5 | reason=Probe: Charme (Kaya) — den Köhler Bren beruhigen, Schwierigkeit Leicht 7
