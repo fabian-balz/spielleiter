@@ -9,6 +9,11 @@ Open a play session. All guardrails in CLAUDE.md apply.
 
 ## Steps
 
+0. **Instance check**: if the root `README.md` frontmatter contains
+   `template: true`, refuse — this is the Spielleiter template, not a
+   campaign; point to README § "Starting a campaign (instantiation)".
+   If no campaign exists yet (no `characters/*.md` beyond the README),
+   suggest `/new-campaign` instead.
 1. **Read state** (files win over memory):
    - latest `journal/sessions/session-NNN.md`
    - all quest files in `world/` (`type: quest`)

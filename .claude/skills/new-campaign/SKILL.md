@@ -10,6 +10,26 @@ is written to disk before the player has approved the distilled system.**
 All guardrails in CLAUDE.md apply, especially G2 (rules live in `system/`)
 and G5 (the player decides everything about their character).
 
+## 0. Instance check & scaffold (before anything else)
+
+1. **Refuse in the template repo.** If the root `README.md` frontmatter
+   contains `template: true`, stop: explain that campaigns are played in
+   instances, point to README § "Starting a campaign (instantiation)", and
+   do not write anything. If the marker's absence can't be verified
+   (README missing/rewritten), ask the player whether this is the template
+   or an instance before proceeding.
+2. **Self-heal the scaffold.** This skill must work in a fresh instance,
+   even a minimal copy. Ensure these exist, creating empty/placeholder
+   versions of whatever is missing: `system/` (+ `system/tables/`,
+   `system/rulings.md`), `world/`, `characters/`, `journal/sessions/`,
+   an empty `journal/rolls.log`, `gm/` (+ `gm/plot.md`, `gm/secrets/`),
+   and `tools/roll.sh` / `tools/oracle.sh` present and executable
+   (`chmod +x` if not). If the tools themselves are missing, stop and
+   tell the player the instance is incomplete — do not improvise dice.
+3. If `git-crypt` appears unconfigured (no `.git/git-crypt/`), warn the
+   player once that `gm/` will commit as plaintext until the README's
+   git-crypt setup is done — then continue; it's their call.
+
 ## 1. Interview (read-only phase)
 
 Ask, one topic at a time, in the campaign language (German unless told

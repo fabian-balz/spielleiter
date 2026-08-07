@@ -1,9 +1,22 @@
+---
+template: true
+---
+
 # Spielleiter
 
 An agentic Game Master for pen & paper RPGs, running inside
-[Claude Code](https://claude.com/claude-code). The repository itself is the
+[Claude Code](https://claude.com/claude-code). A campaign repository is the
 campaign world: all state lives in versioned files, git history is campaign
 history. v1 targets **solo play** and is system-agnostic.
+
+> **This repository is a template, not a campaign.** You don't play here —
+> you create a private *instance* per campaign (see
+> [Starting a campaign](#starting-a-campaign-instantiation)) and play
+> there. No campaign content ever lands in the template; an executable
+> check (`evals/test_template_clean.sh`) enforces this, and `/new-campaign`
+> refuses to run while the `template: true` marker at the top of this file
+> is present. The only campaign in this repo is the curated demo under
+> `examples/mini-campaign/`.
 
 **Core principle:** the agent narrates and interprets. It never generates
 randomness (dice come from `tools/`), never invents rules (rules live in
@@ -29,7 +42,8 @@ spielleiter/
 │   ├── roll.sh            # Dice roller
 │   └── oracle.sh          # Solo-play oracle + table lookup
 ├── evals/                 # Acceptance tests (executable + manual scenarios)
-└── examples/              # Demo mini-campaign with one full solo session
+├── examples/              # Demo mini-campaign with one full solo session
+└── docs/adr/              # Architecture Decision Records (template development)
 ```
 
 ## Requirements
@@ -37,16 +51,33 @@ spielleiter/
 bash, coreutils, git — plus git-crypt and gpg for the `gm/` directory.
 No other runtime dependencies.
 
-## Quickstart
+## Starting a campaign (instantiation)
 
-1. Clone, then complete the [git-crypt setup](#git-crypt-setup) below.
-2. Open the repository in Claude Code.
-3. `/new-campaign` — interview: rules system, setting, safety tools (lines &
-   veils), first character. Nothing is written before you approve the
-   distilled system.
-4. `/session-start` — recap + opening scene. Play.
-5. `/session-end` — session summary, quest updates, one commit per session.
-6. `/recap` — read-only campaign summary any time.
+1. **Create your instance** — either click **Use this template** on GitHub
+   (choose *private* for a real campaign), or clone and re-init:
+
+   ```sh
+   git clone <template-url> my-campaign && cd my-campaign
+   rm -rf .git && git init && git add -A && git commit -m "chore: instance from spielleiter template"
+   ```
+
+2. **Mark it as an instance**: delete the `template: true` frontmatter at
+   the top of this README (and, ideally, this whole instantiation section).
+   `/new-campaign` checks for the marker and will not create campaign
+   content while it is present.
+3. **Set up encryption** for `gm/`: complete the
+   [git-crypt setup](#git-crypt-setup) below *before* any real secrets
+   exist.
+4. Open the instance in Claude Code and run `/new-campaign` — interview:
+   rules system, setting, safety tools (lines & veils), first character.
+   It works from the empty scaffolds and writes nothing before you approve
+   the distilled system.
+
+## Playing
+
+- `/session-start` — recap + opening scene. Play.
+- `/session-end` — session summary, quest updates, one commit per session.
+- `/recap` — read-only campaign summary any time.
 
 ### Dice & oracle (also usable by hand)
 
@@ -106,7 +137,13 @@ deliberately unencrypted (see `.gitattributes`) so the example stays readable.
 evals/test_roll.sh
 evals/test_oracle.sh
 evals/test_journal_append.sh
+evals/test_template_clean.sh   # template repo only: no campaign content in root
 ```
 
 Behavioral acceptance tests for the agent itself (dice integrity, rules gate,
 player agency, secret leakage) are documented in `evals/MANUAL.md`.
+
+## Developing the template
+
+Architectural decisions are recorded as ADRs in `docs/adr/` — at decision
+time, not retroactively (see `docs/adr/README.md`).
