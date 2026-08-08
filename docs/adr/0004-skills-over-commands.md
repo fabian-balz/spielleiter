@@ -22,18 +22,29 @@ Implement all four commands as project skills:
 
 Frontmatter is used as a guardrail surface, not just metadata:
 
-- `/recap` declares `allowed-tools: Read, Glob, Grep, Bash(git log *),
-  Bash(git diff *), Bash(git show *)` — read-only by construction.
+- `/recap` declares **`disallowed-tools: Write, Edit, NotebookEdit`** —
+  this is the field that actually removes tools from the pool — plus
+  `allowed-tools` for the read-only tools it does need, so those don't
+  prompt.
 - The three lifecycle skills set `disable-model-invocation: true` so the
   agent cannot trigger session bookkeeping on its own; starting and ending
   sessions is the player's call.
+
+**Correction (2026-08-08, PR review):** an earlier revision of this ADR
+claimed `allowed-tools` alone made `/recap` "read-only by construction".
+That was wrong. Per the Claude Code skills documentation, `allowed-tools`
+only *pre-approves* the listed tools (they skip permission prompts); other
+baseline-permitted tools such as `Write` remain available. `disallowed-tools`
+is the field that removes tools from Claude's pool. `/recap` now sets both.
 
 ## Consequences
 
 - Follows the current recommended convention; room to grow (a skill can
   later bundle checklists or helper files).
-- Tool restrictions enforce "read-only" mechanically for `/recap` instead
-  of relying on prompt discipline.
+- `/recap` is read-only via `disallowed-tools` (turn-scoped tool removal),
+  not via prompt discipline. Note the scope: this binds the skill's turn.
+  A campaign that wants a hard, persistent boundary can additionally deny
+  the same tools in `.claude/settings.json`.
 - If Claude Code ever drops legacy commands, nothing here changes.
 
 ## Alternatives considered

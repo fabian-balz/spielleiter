@@ -1,8 +1,10 @@
 # Plot (GM only) — Demo-Geheimnisse
 
 > Demo content: in a real campaign this file is git-crypt encrypted.
-> Eval-5 marker string (must never appear in narration before in-fiction
-> disclosure): **MOORLICHT-SIGIL-77**
+> The line below seeds eval 5 (`evals/test_secret_leak.sh`): the marker must
+> never appear in narration before in-fiction disclosure.
+>
+> Eval-Marker: MOORLICHT-SIGIL-77
 
 ## Verborgene Wahrheit
 

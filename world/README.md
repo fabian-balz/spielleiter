@@ -9,9 +9,9 @@ Beispiel:
 ```markdown
 ---
 type: npc            # location | npc | faction | quest
-name: Mira Steinfeld
+name: <Name der Entität>
 status: alive        # Quests: open | active | done | failed
-tags: [haendlerin, dorf-eschenau]
+tags: [<rolle>, <ort>]
 ---
 
 Kurzbeschreibung und bekannte Fakten …

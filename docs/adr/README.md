@@ -22,3 +22,8 @@ Status values: `Accepted`, `Superseded by NNNN`.
 - [0004 — Skills over legacy commands](0004-skills-over-commands.md)
 - [0005 — git-crypt wired but not initialized](0005-git-crypt-wired-not-initialized.md)
 - [0006 — Template/instance separation](0006-template-instance-separation.md)
+- [0007 — Tool input integrity: reason validation and table-id confinement](0007-tool-input-integrity.md)
+- [0008 — Oracle bands and API](0008-oracle-bands-and-api.md)
+- [0009 — A minimal default system ships with the template](0009-default-system.md)
+- [0010 — Eval strategy: what is executable, what stays manual](0010-eval-strategy.md)
+- [0011 — Journal append-only is enforced by diff, not by file permissions](0011-journal-append-enforcement.md)

@@ -32,10 +32,10 @@ lines=0
 assert_eq "no log lines written for invalid exprs" "0" "${lines}"
 
 echo "== --seed reproducibility =="
-a=$("${ROLL}" 4d6kh3 --seed 42 | cut -d'|' -f3-)
-b=$("${ROLL}" 4d6kh3 --seed 42 | cut -d'|' -f3-)
+a=$("${ROLL}" 4d6kh3 --seed 42 --reason "t" | cut -d'|' -f3-)
+b=$("${ROLL}" 4d6kh3 --seed 42 --reason "t" | cut -d'|' -f3-)
 assert_eq "same seed -> same dice/total" "${a}" "${b}"
-c=$("${ROLL}" 4d6kh3 --seed 43 | cut -d'|' -f3-)
+c=$("${ROLL}" 4d6kh3 --seed 43 --reason "t" | cut -d'|' -f3-)
 if [[ "${a}" != "${c}" ]]; then ok "different seed -> different result"; else fail "seeds 42/43 collided"; fi
 
 echo "== log format stability =="
@@ -43,31 +43,43 @@ line=$("${ROLL}" 2d6+3 --seed 1 --reason "Probe: Klettern")
 re='^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z \| 2d6\+3 \| dice=\[[1-6],[1-6]\] \| total=[0-9]+ \| reason=Probe: Klettern$'
 if [[ "${line}" =~ ${re} ]]; then ok "plain roll line format"; else fail "format mismatch: ${line}"; fi
 
-line=$("${ROLL}" 4d6kh3 --seed 1)
-re='^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z \| 4d6kh3 \| dice=\[[1-6],[1-6],[1-6],[1-6]\] \| kept=\[[1-6],[1-6],[1-6]\] \| total=[0-9]+ \| reason=$'
+line=$("${ROLL}" 4d6kh3 --seed 1 --reason "t")
+re='^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z \| 4d6kh3 \| dice=\[[1-6],[1-6],[1-6],[1-6]\] \| kept=\[[1-6],[1-6],[1-6]\] \| total=[0-9]+ \| reason=t$'
 if [[ "${line}" =~ ${re} ]]; then ok "kh roll line format"; else fail "kh format mismatch: ${line}"; fi
 
 echo "== arithmetic: total = sum(kept) + modifier =="
-line=$("${ROLL}" 4d6kh3+2 --seed 42)
+line=$("${ROLL}" 4d6kh3+2 --seed 42 --reason "t")
 kept=$(sed -E 's/.*kept=\[([0-9,]+)\].*/\1/' <<< "${line}")
 total=$(sed -E 's/.*total=([0-9-]+).*/\1/' <<< "${line}")
 sum=0; IFS=, read -ra ks <<< "${kept}"; for k in "${ks[@]}"; do sum=$((sum+k)); done
 assert_eq "kh3+2 total" "$((sum+2))" "${total}"
 
-line=$("${ROLL}" 2d6-1 --seed 5)
+line=$("${ROLL}" 2d6-1 --seed 5 --reason "t")
 dice=$(sed -E 's/.*dice=\[([0-9,]+)\].*/\1/' <<< "${line}")
 total=$(sed -E 's/.*total=(-?[0-9]+).*/\1/' <<< "${line}")
 sum=0; IFS=, read -ra ds <<< "${dice}"; for d in "${ds[@]}"; do sum=$((sum+d)); done
 assert_eq "2d6-1 total" "$((sum-1))" "${total}"
 
 echo "== dice within bounds =="
-line=$("${ROLL}" 10d8 --seed 9)
+line=$("${ROLL}" 10d8 --seed 9 --reason "t")
 dice=$(sed -E 's/.*dice=\[([0-9,]+)\].*/\1/' <<< "${line}")
 bounds_ok=1
 IFS=, read -ra ds <<< "${dice}"
 for d in "${ds[@]}"; do (( d >= 1 && d <= 8 )) || bounds_ok=0; done
 assert_eq "10d8 count" "10" "${#ds[@]}"
 assert_eq "10d8 all in 1..8" "1" "${bounds_ok}"
+
+echo "== reason is mandatory, single-line, and cannot forge log entries (G1) =="
+before=$(wc -l < "${SPIELLEITER_ROLL_LOG}")
+"${ROLL}" 1d6 >/dev/null 2>&1                  && fail "missing reason accepted"  || ok "rejects missing --reason"
+"${ROLL}" 1d6 --reason "" >/dev/null 2>&1      && fail "empty reason accepted"    || ok "rejects empty --reason"
+"${ROLL}" 1d6 --reason "a|b" >/dev/null 2>&1   && fail "pipe in reason accepted"  || ok "rejects '|' in --reason"
+forge=$'harmlos\n2020-01-01T00:00:00Z | 3d6 | dice=[6,6,6] | total=18 | reason=FORGED'
+"${ROLL}" 1d6 --reason "${forge}" >/dev/null 2>&1 && fail "newline reason accepted" || ok "rejects newline in --reason"
+"${ROLL}" 1d6 --reason $'a\rb' >/dev/null 2>&1 && fail "CR in reason accepted"    || ok "rejects CR in --reason"
+after=$(wc -l < "${SPIELLEITER_ROLL_LOG}")
+assert_eq "rejected reasons wrote nothing to the log" "${before}" "${after}"
+if grep -q "FORGED" "${SPIELLEITER_ROLL_LOG}"; then fail "forged line reached the log"; else ok "no forged line in log"; fi
 
 echo "== exactly one log line appended per invocation, stdout == log line =="
 before=$(wc -l < "${SPIELLEITER_ROLL_LOG}")

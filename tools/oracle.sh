@@ -2,8 +2,11 @@
 # oracle.sh — solo-play oracle and random-table lookup for Spielleiter.
 #
 # Usage:
-#   oracle.sh yesno [--likelihood likely|even|unlikely] [--reason "text"] [--seed N]
-#   oracle.sh table <table-id> [--reason "text"] [--seed N]
+#   oracle.sh yesno [--likelihood likely|even|unlikely] --reason "text" [--seed N]
+#   oracle.sh table <table-id> --reason "text" [--seed N]
+#
+# --reason is REQUIRED (single line, no '|'); <table-id> is a bare name, never
+# a path — see sl_table. Pure bash + coreutils; no awk at runtime.
 #
 # yesno rolls 1d20 and maps it to Yes / Yes-but / No-but / No.
 # The exact odds are documented in system/system.md (section "Orakel").
@@ -76,14 +79,63 @@ sl_table_lookup() {
   return 1
 }
 
+# sl_read_die <file> — print the value of the top-level `die:` field (pure bash)
+sl_read_die() {
+  local file=$1 line
+  while IFS= read -r line || [[ -n "${line}" ]]; do
+    if [[ "${line}" =~ ^die:[[:space:]]*(.+)[[:space:]]*$ ]]; then
+      printf '%s\n' "${BASH_REMATCH[1]}"
+      return 0
+    fi
+  done < "${file}"
+  return 1
+}
+
+# sl_read_id <file> — print the value of the top-level `id:` field (pure bash)
+sl_read_id() {
+  local file=$1 line
+  while IFS= read -r line || [[ -n "${line}" ]]; do
+    if [[ "${line}" =~ ^id:[[:space:]]*(.+)[[:space:]]*$ ]]; then
+      printf '%s\n' "${BASH_REMATCH[1]}"
+      return 0
+    fi
+  done < "${file}"
+  return 1
+}
+
 sl_table() {
   local table_id=$1 reason=$2
+  # A table id is a bare name, never a path. Without this, `table ../../gm/plot`
+  # would read and log a file outside system/tables/ — a G6 secret-leak vector.
+  if ! [[ "${table_id}" =~ ^[A-Za-z0-9][A-Za-z0-9_-]*$ ]]; then
+    echo "oracle.sh: invalid table id: ${table_id} (letters, digits, '_' and '-' only; no paths)" >&2
+    return 1
+  fi
   local file="${SL_TABLES_DIR}/${table_id}.yaml"
   if [[ ! -f "${file}" ]]; then
     echo "oracle.sh: unknown table: ${table_id} (no ${file})" >&2; return 1
   fi
+  # Belt and braces: the resolved file must still sit directly in the tables
+  # directory (catches symlinks pointing out of the tree).
+  local resolved_dir tables_dir
+  resolved_dir="$(cd "$(dirname "${file}")" 2>/dev/null && pwd -P)" || resolved_dir=""
+  tables_dir="$(cd "${SL_TABLES_DIR}" 2>/dev/null && pwd -P)" || tables_dir=""
+  if [[ -z "${resolved_dir}" || "${resolved_dir}" != "${tables_dir}" ]]; then
+    echo "oracle.sh: table ${table_id} resolves outside ${SL_TABLES_DIR}" >&2; return 1
+  fi
+  # The declared id must match the requested one, so a table cannot be logged
+  # under a name that misrepresents its content (ADR 0003).
+  local declared
+  declared="$(sl_read_id "${file}")" || declared=""
+  if [[ -z "${declared}" ]]; then
+    echo "oracle.sh: table ${table_id} has no 'id:' field" >&2; return 1
+  fi
+  if [[ "${declared}" != "${table_id}" ]]; then
+    echo "oracle.sh: table id mismatch: file declares '${declared}', requested '${table_id}'" >&2
+    return 1
+  fi
   local die
-  die="$(awk '/^die: */ { sub(/^die: */, ""); print; exit }' "${file}")"
+  die="$(sl_read_die "${file}")" || die=""
   if [[ -z "${die}" ]]; then
     echo "oracle.sh: table ${table_id} has no 'die:' field" >&2; return 1
   fi
@@ -121,6 +173,10 @@ sl_oracle_main() {
   if [[ -n "${seed}" ]]; then
     [[ "${seed}" =~ ^[0-9]+$ ]] || { echo "oracle.sh: --seed must be a non-negative integer" >&2; return 2; }
     sl_srand "${seed}"
+  fi
+
+  if [[ "${mode}" == "yesno" || "${mode}" == "table" ]]; then
+    sl_check_reason "${reason}" || return 2
   fi
 
   case "${mode}" in

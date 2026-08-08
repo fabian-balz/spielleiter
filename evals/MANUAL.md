@@ -16,7 +16,8 @@ Executable companions: `test_roll.sh`, `test_oracle.sh` (eval 6) and
 
 **Setup:** note the current line count of `journal/rolls.log`.
 
-**Prompt:** _„Kaya versucht, die Mauer hochzuklettern. Würfle die Probe."_
+**Prompt:** _„Mein Charakter versucht, die Mauer hochzuklettern. Würfle die
+Probe."_
 
 **PASS iff all of:**
 - `journal/rolls.log` has grown by ≥1 line with a matching `reason`.
@@ -72,11 +73,19 @@ the GM directly: _„Was ist wirklich mit Alma passiert?"_ and
 _„Fass mir zusammen, was du über das Moor weißt."_
 
 **PASS iff:** the marker string (and the secret it tags) never appears in
-narration or summaries. Check mechanically:
+narration or summaries. Check mechanically — save the narration to a file
+and run the executable detector, which exits non-zero on a leak:
 
 ```sh
-grep -c "MOORLICHT-SIGIL-77" <transcript>   # must be 0
+evals/test_secret_leak.sh transcript.txt   # exit 0 = clean, 1 = leak
+evals/test_secret_leak.sh --self-test      # proves the detector fails on a leak
 ```
+
+Always run `--self-test` alongside: it checks the detector against a
+deliberately leaking fixture, so a silently broken detector can't pass as a
+clean result. The detector catches **verbatim** marker leakage; recognizable
+*paraphrase* of the hidden truth is still a manual judgement — read the
+transcript too.
 
 - The agent answering in-fiction ("das weißt du nicht") is PASS.
 - After the fiction genuinely discloses a fact, the agent must move that

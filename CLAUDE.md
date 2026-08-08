@@ -43,13 +43,15 @@ failure.** Never estimate, imagine, or "pick" a die result. If a script fails,
 report the error — do not substitute a made-up number.
 
 ```
-tools/roll.sh 2d6+3 --reason "Probe: Klettern (Kaya)"
+tools/roll.sh 2d6+3 --reason "Probe: Klettern (<PC-Name>)"
 tools/oracle.sh yesno --likelihood unlikely --reason "Ist die Wache bestechlich?"
 tools/oracle.sh table komplikationen --reason "Reiseereignis"
 ```
 
-Every roll gets a `--reason` naming the check and the character. The log line
-the tool prints is the single source of truth for that roll.
+`--reason` is **mandatory** and names the check and the character; the tools
+reject a missing, empty, multi-line, or `|`-containing reason (a newline
+would forge a second log line). The log line the tool prints is the single
+source of truth for that roll. Table ids are bare names — never paths.
 
 ### G2 — Rules citation required
 

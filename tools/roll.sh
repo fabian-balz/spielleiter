@@ -1,8 +1,12 @@
 #!/usr/bin/env bash
 # roll.sh — deterministic, auditable dice roller for Spielleiter.
 #
-# Usage: roll.sh <expr> [--reason "text"] [--seed N]
+# Usage: roll.sh <expr> --reason "text" [--seed N]
 #   expr: NdM, NdM+K, NdM-K, NdMkhX, NdMkhX+K   (e.g. 2d6+3, 1d20, 4d6kh3)
+#
+# --reason is REQUIRED and must be a single line without '|' — it is the only
+# free text in a log line, and an unvalidated newline would forge a second
+# entry (G1). Requires bash 4+ features nowhere; bash 3.2 compatible.
 #
 # Every invocation appends exactly one line to journal/rolls.log and prints
 # the same line to stdout. The log is machine-written; never edit it by hand.
@@ -55,9 +59,36 @@ sl_die() {
   SL_DIE=$(( SL_RAND % sides + 1 ))
 }
 
+# --- reason validation -----------------------------------------------------
+# The reason is the only free text in a log line. Unvalidated, a newline in it
+# would append a second physical line — a forged roll indistinguishable from a
+# real one (G1). Field separators are rejected for the same reason.
+# sl_check_reason <reason> — non-zero + message on stderr if unusable.
+sl_check_reason() {
+  local reason=$1
+  if [[ -z "${reason}" ]]; then
+    echo "roll: --reason is required (name the check and the character)" >&2
+    return 1
+  fi
+  if [[ "${reason}" == *$'\n'* || "${reason}" == *$'\r'* ]]; then
+    echo "roll: --reason must be a single line (no newlines)" >&2
+    return 1
+  fi
+  if [[ "${reason}" == *"|"* ]]; then
+    echo "roll: --reason must not contain '|' (log field separator)" >&2
+    return 1
+  fi
+  return 0
+}
+
 # --- logging ---------------------------------------------------------------
-# sl_log_line <line> — append to rolls.log and echo to stdout
+# sl_log_line <line> — append to rolls.log and echo to stdout.
+# Refuses to write anything containing a newline: one invocation, one line.
 sl_log_line() {
+  if [[ "$1" == *$'\n'* ]]; then
+    echo "roll: refusing to write a multi-line log entry" >&2
+    return 1
+  fi
   mkdir -p "$(dirname "${SL_LOG_FILE}")"
   printf '%s\n' "$1" >> "${SL_LOG_FILE}"
   printf '%s\n' "$1"
@@ -91,7 +122,11 @@ sl_roll_expr() {
 
   local kept=()
   if [[ -n "${keep}" ]]; then
-    mapfile -t kept < <(printf '%s\n' "${dice[@]}" | sort -rn | head -n "${keep}")
+    # portable read loop instead of mapfile (bash 3.2 compatibility)
+    local k
+    while IFS= read -r k; do
+      kept+=( "${k}" )
+    done < <(printf '%s\n' "${dice[@]}" | sort -rn | head -n "${keep}")
     SL_KEPT="${kept[*]}"
   else
     kept=( "${dice[@]}" )
@@ -114,7 +149,7 @@ sl_roll_main() {
       --reason) shift; reason="${1:-}";;
       --seed)   shift; seed="${1:-}";;
       -h|--help)
-        echo "Usage: roll.sh <expr> [--reason \"text\"] [--seed N]  (expr: 2d6+3, 1d20, 4d6kh3)"
+        echo "Usage: roll.sh <expr> --reason \"text\" [--seed N]  (expr: 2d6+3, 1d20, 4d6kh3)"
         return 0;;
       -*)
         echo "roll.sh: unknown option: $1" >&2; return 2;;
@@ -129,6 +164,7 @@ sl_roll_main() {
     echo "roll.sh: missing dice expression (e.g. 2d6+3)" >&2
     return 2
   fi
+  sl_check_reason "${reason}" || return 2
   if [[ -n "${seed}" ]]; then
     [[ "${seed}" =~ ^[0-9]+$ ]] || { echo "roll.sh: --seed must be a non-negative integer" >&2; return 2; }
     sl_srand "${seed}"

@@ -48,8 +48,21 @@ spielleiter/
 
 ## Requirements
 
-bash, coreutils, git — plus git-crypt and gpg for the `gm/` directory.
-No other runtime dependencies.
+- **bash 3.2+.** The tools deliberately avoid bash-4-only features
+  (`mapfile`/`readarray`, associative arrays, `${var^^}`) and use the
+  regex-in-variable form that bash 3.2 requires, so they should run on the
+  `/bin/bash` macOS ships. Caveat: this is a code-level guarantee, not a
+  tested one — CI here only has bash 5.2. If you hit a 3.2 problem, please
+  report it; the fix is in scope.
+- **coreutils**: `date`, `od`, `sort`, `head`, `tr`, `wc`, `mktemp`,
+  `find`, `printf`.
+- **POSIX text utilities** used by the tools and evals: `sed`, `grep`.
+  The runtime tools (`roll.sh`, `oracle.sh`) parse YAML in pure bash — no
+  `awk`, `yq`, `jq`, or python.
+- **git**, plus **git-crypt** and **gpg** for the `gm/` directory.
+
+No other runtime dependencies; nothing is installed or downloaded at
+runtime.
 
 ## Starting a campaign (instantiation)
 
@@ -84,11 +97,16 @@ No other runtime dependencies.
 ```
 tools/roll.sh 2d6+3 --reason "Probe: Klettern"     # NdM, NdM±K, NdMkhX
 tools/oracle.sh yesno --likelihood unlikely --reason "Regnet es?"
-tools/oracle.sh table komplikationen
+tools/oracle.sh table komplikationen --reason "Reiseereignis"
 ```
 
 Every invocation appends one line to `journal/rolls.log` and prints it. A
 `--seed N` flag makes results reproducible (used by the tests).
+
+`--reason` is **required**: it must be a single line and must not contain
+`|`. This is an integrity guard, not pedantry — a newline in the reason
+would append a second physical log line, i.e. a forged roll (G1). Table ids
+are bare names (`komplikationen`), never paths.
 
 ## git-crypt setup
 
@@ -137,7 +155,9 @@ deliberately unencrypted (see `.gitattributes`) so the example stays readable.
 evals/test_roll.sh
 evals/test_oracle.sh
 evals/test_journal_append.sh
-evals/test_template_clean.sh   # template repo only: no campaign content in root
+evals/test_template_clean.sh      # template repo only: no campaign content in root
+evals/test_secret_leak.sh --self-test          # proves the G6 leak detector works
+evals/test_secret_leak.sh <transcript-file>    # scans narration for GM-only markers
 ```
 
 Behavioral acceptance tests for the agent itself (dice integrity, rules gate,

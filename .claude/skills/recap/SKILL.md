@@ -1,6 +1,7 @@
 ---
 description: Read-only summary of the campaign so far — no files are written
 allowed-tools: Read, Glob, Grep, Bash(git log *), Bash(git diff *), Bash(git show *)
+disallowed-tools: Write, Edit, NotebookEdit
 ---
 
 # /recap

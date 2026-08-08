@@ -8,15 +8,15 @@ Beispiel (Default-System, siehe `system/system.md`):
 
 ```markdown
 ---
-name: Kaya
+name: <Charaktername>
 type: pc
 koerper: 1
 geist: 2
 charme: 0
 belastung: 3        # aktuelle Belastungspunkte (max. 3)
 inventar:
-  - Reisemantel
-  - Messer
+  - <Gegenstand>
+  - <Gegenstand>
 ---
 
 Hintergrund, Aussehen, Bindungen …

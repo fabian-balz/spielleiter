@@ -42,14 +42,57 @@ assert_eq() { if [[ "$2" == "$3" ]]; then ok "$1"; else fail "$1 (expected '$2',
 echo "== argument validation =="
 "${ORACLE}" >/dev/null 2>&1              && fail "no mode accepted"        || ok "rejects missing mode"
 "${ORACLE}" frobnicate >/dev/null 2>&1   && fail "bad mode accepted"       || ok "rejects unknown mode"
-"${ORACLE}" yesno --likelihood maybe >/dev/null 2>&1 && fail "bad likelihood accepted" || ok "rejects bad likelihood"
+"${ORACLE}" yesno --likelihood maybe --reason "t" >/dev/null 2>&1 && fail "bad likelihood accepted" || ok "rejects bad likelihood"
 "${ORACLE}" table >/dev/null 2>&1        && fail "table w/o id accepted"   || ok "rejects table without id"
-"${ORACLE}" table missing >/dev/null 2>&1 && fail "unknown table accepted" || ok "rejects unknown table"
-"${ORACLE}" table nodie >/dev/null 2>&1  && fail "table w/o die accepted"  || ok "rejects table without die:"
+"${ORACLE}" table missing --reason "t" >/dev/null 2>&1 && fail "unknown table accepted" || ok "rejects unknown table"
+"${ORACLE}" table nodie --reason "t" >/dev/null 2>&1  && fail "table w/o die accepted"  || ok "rejects table without die:"
+
+echo "== table id is a bare name: no path traversal (G6) =="
+# A readable, well-formed table placed one level above the tables dir must
+# stay unreachable — otherwise `table ../../gm/plot` could leak secrets.
+cat > "${TMPDIR_T}/outside.yaml" <<'EOF'
+id: outside
+die: 1d2
+entries:
+  1-2: "SECRET-SHOULD-NEVER-APPEAR"
+EOF
+for evil in "../outside" "../../etc/passwd" "/etc/passwd" "foo/bar" "." ".." "a;b" 'x$(id)'; do
+  if "${ORACLE}" table "${evil}" --reason "t" >/dev/null 2>&1; then
+    fail "traversal accepted: ${evil}"
+  else
+    ok "rejects table id '${evil}'"
+  fi
+done
+if grep -q "SECRET-SHOULD-NEVER-APPEAR" "${SPIELLEITER_ROLL_LOG}" 2>/dev/null; then
+  fail "outside-table content reached the log"
+else
+  ok "no outside-table content in log"
+fi
+
+echo "== declared id must match requested id =="
+cat > "${SPIELLEITER_TABLES_DIR}/mismatch.yaml" <<'EOF'
+id: something-else
+die: 1d2
+entries:
+  1-2: "x"
+EOF
+"${ORACLE}" table mismatch --reason "t" >/dev/null 2>&1 && fail "id mismatch accepted" || ok "rejects id mismatch"
+cat > "${SPIELLEITER_TABLES_DIR}/noid.yaml" <<'EOF'
+die: 1d2
+entries:
+  1-2: "x"
+EOF
+"${ORACLE}" table noid --reason "t" >/dev/null 2>&1 && fail "missing id accepted" || ok "rejects table without id:"
+
+echo "== reason is mandatory and single-line =="
+"${ORACLE}" yesno >/dev/null 2>&1                    && fail "yesno w/o reason"   || ok "yesno rejects missing --reason"
+"${ORACLE}" table testtable >/dev/null 2>&1          && fail "table w/o reason"   || ok "table rejects missing --reason"
+"${ORACLE}" yesno --reason $'a\nb | fake' >/dev/null 2>&1 && fail "newline reason" || ok "rejects newline in --reason"
+"${ORACLE}" yesno --reason "a|b" >/dev/null 2>&1     && fail "pipe reason"        || ok "rejects '|' in --reason"
 
 echo "== yesno: reproducibility, format, mapping =="
-a=$("${ORACLE}" yesno --seed 42 | cut -d'|' -f3-)
-b=$("${ORACLE}" yesno --seed 42 | cut -d'|' -f3-)
+a=$("${ORACLE}" yesno --seed 42 --reason "t" | cut -d'|' -f3-)
+b=$("${ORACLE}" yesno --seed 42 --reason "t" | cut -d'|' -f3-)
 assert_eq "same seed -> same yesno" "${a}" "${b}"
 
 for lk in likely even unlikely; do
@@ -67,7 +110,7 @@ map_unlikely() { local n=$1; if ((n<=5)); then echo Yes; elif ((n<=7)); then ech
 map_ok=1
 for lk in even likely unlikely; do
   for seed in $(seq 1 40); do
-    line=$("${ORACLE}" yesno --likelihood "${lk}" --seed "${seed}")
+    line=$("${ORACLE}" yesno --likelihood "${lk}" --seed "${seed}" --reason "t")
     n=$(sed -E 's/.*total=([0-9]+).*/\1/' <<< "${line}")
     got=$(sed -E 's/.*result=([A-Za-z-]+).*/\1/' <<< "${line}")
     want=$("map_${lk}" "${n}")
@@ -83,7 +126,7 @@ if [[ "${line}" =~ ${re} ]]; then ok "table line format (id + entry logged)"; el
 
 range_ok=1
 for seed in $(seq 1 30); do
-  line=$("${ORACLE}" table testtable --seed "${seed}")
+  line=$("${ORACLE}" table testtable --seed "${seed}" --reason "t")
   n=$(sed -E 's/.*total=([0-9]+).*/\1/' <<< "${line}")
   got=$(sed -E 's/.*result=(.*) \| reason=.*/\1/' <<< "${line}")
   case "${n}" in
@@ -98,7 +141,7 @@ done
 echo "== table with uncovered roll fails =="
 gap_fail=0
 for seed in $(seq 1 20); do
-  if ! "${ORACLE}" table gap --seed "${seed}" >/dev/null 2>&1; then gap_fail=1; break; fi
+  if ! "${ORACLE}" table gap --seed "${seed}" --reason "t" >/dev/null 2>&1; then gap_fail=1; break; fi
 done
 (( gap_fail )) && ok "uncovered roll -> non-zero exit" || fail "gap table never failed in 20 seeds"
 
@@ -111,7 +154,7 @@ assert_eq "stdout matches last log line" "$(tail -n1 "${SPIELLEITER_ROLL_LOG}")"
 
 echo "== real repo table komplikationen resolves =="
 unset SPIELLEITER_TABLES_DIR
-if "${ORACLE}" table komplikationen >/dev/null 2>&1; then ok "komplikationen resolves"; else fail "komplikationen failed"; fi
+if "${ORACLE}" table komplikationen --reason "t" >/dev/null 2>&1; then ok "komplikationen resolves"; else fail "komplikationen failed"; fi
 
 echo
 echo "test_oracle.sh: ${PASS} passed, ${FAIL} failed"

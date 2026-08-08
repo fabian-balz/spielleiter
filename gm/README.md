@@ -1,9 +1,10 @@
 # gm/ — GM-only material (encrypted)
 
-Everything in this directory except this README is encrypted with
-**git-crypt** (see `.gitattributes`: `gm/** filter=git-crypt`) and holds
-material the player must not see: plot outlines (`plot.md`), hidden stats,
-prepared twists (`secrets/`).
+Everything in this directory is encrypted with **git-crypt** (see
+`.gitattributes`: `gm/** filter=git-crypt`) except two deliberate plaintext
+exceptions: this `README.md` and the empty `secrets/.gitkeep` placeholder.
+The encrypted files hold material the player must not see: plot outlines
+(`plot.md`), hidden stats, prepared twists (`secrets/`).
 
 Guardrail G6: the agent never reveals, quotes, or paraphrases content from
 this directory in narration. When the fiction discloses a fact, that fact

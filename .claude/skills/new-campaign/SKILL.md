@@ -5,8 +5,16 @@ disable-model-invocation: true
 
 # /new-campaign
 
-Interview the player and bootstrap the campaign files. **Spec-Gate: nothing
-is written to disk before the player has approved the distilled system.**
+Interview the player and bootstrap the campaign files.
+
+**Spec-Gate:** no *campaign-specific content* — system rules, setting,
+characters, world entities, plot — is written before the player approves
+the distilled system. Step 0 below is the one exception and is explicitly
+not campaign content: it may create **empty scaffolds** (directories,
+placeholder files, an empty `rolls.log`) and fix executable bits so the
+interview can run at all. If step 0 has to create anything, say so before
+starting the interview.
+
 All guardrails in CLAUDE.md apply, especially G2 (rules live in `system/`)
 and G5 (the player decides everything about their character).
 
@@ -26,7 +34,14 @@ and G5 (the player decides everything about their character).
    and `tools/roll.sh` / `tools/oracle.sh` present and executable
    (`chmod +x` if not). If the tools themselves are missing, stop and
    tell the player the instance is incomplete — do not improvise dice.
-3. If `git-crypt` appears unconfigured (no `.git/git-crypt/`), warn the
+3. **Ensure `system/system.md` exists.** Step 1 below offers the default
+   system as one of two paths and step 3 edits this file, so it must be
+   present. If it is missing, restore the canonical default from
+   `examples/mini-campaign/system/system.md` (same file, unmodified) or,
+   if that is unavailable too, tell the player the instance is incomplete
+   and offer to distill a system from their rules text instead — never
+   invent rules silently (G2).
+4. If `git-crypt` appears unconfigured (no `.git/git-crypt/`), warn the
    player once that `gm/` will commit as plaintext until the README's
    git-crypt setup is done — then continue; it's their call.
 
