@@ -22,12 +22,14 @@ wird gewürfelt: **2d6 + Attribut** gegen eine Schwierigkeit.
 | Normal | 9 |
 | Schwer | 11 |
 
-- **Erfolg:** Ergebnis ≥ Zielwert.
-- **Erfolg mit Haken:** Ergebnis = Zielwert. Es gelingt, aber mit Kosten oder
-  Komplikation (Spielleiter darf `tools/oracle.sh table komplikationen`
-  befragen).
-- **Fehlschlag:** Ergebnis < Zielwert. Die Situation verschlechtert sich; ein
-  bloßes "nichts passiert" ist kein Fehlschlag.
+Die drei Ergebnisse sind überschneidungsfrei — genau einer der Fälle trifft zu:
+
+- **Erfolg:** Ergebnis **>** Zielwert. Es gelingt wie beabsichtigt.
+- **Erfolg mit Haken:** Ergebnis **=** Zielwert (Gleichstand). Es gelingt,
+  aber mit Kosten oder Komplikation (Spielleiter darf
+  `tools/oracle.sh table komplikationen` befragen).
+- **Fehlschlag:** Ergebnis **<** Zielwert. Die Situation verschlechtert sich;
+  ein bloßes "nichts passiert" ist kein Fehlschlag.
 - Kein Wurf ohne Ungewissheit: Triviales gelingt automatisch, Unmögliches
   scheitert automatisch.
 

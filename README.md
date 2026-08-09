@@ -83,8 +83,11 @@ runtime.
    exist.
 4. Open the instance in Claude Code and run `/new-campaign` — interview:
    rules system, setting, safety tools (lines & veils), first character.
-   It works from the empty scaffolds and writes nothing before you approve
-   the distilled system.
+   **Spec-Gate:** no campaign-specific content — rules, setting, characters,
+   world, plot — is written before you approve the distilled system. If the
+   instance is missing directories or placeholder files, `/new-campaign`
+   repairs that scaffold first and tells you it did; empty scaffolding is
+   explicitly not campaign content.
 
 ## Playing
 

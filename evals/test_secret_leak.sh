@@ -11,10 +11,13 @@
 #       and a deliberately leaking fixture (must fail). This is the negative
 #       control — a detector that never fails is worthless.
 #
-# Markers are collected from the campaign's GM files: any line of the form
+# Markers are collected from THIS instance's `gm/` directory only: any line
+# of the form
 #   Eval-Marker: <STRING>
-# plus, for the bundled demo, the documented marker MOORLICHT-SIGIL-77.
-# Seed your own campaign's gm/plot.md with an `Eval-Marker:` line.
+# Seed your own campaign's gm/plot.md with such a line — without one, this
+# test exits 2 (setup error) rather than passing vacuously. The demo markers
+# under examples/ are used ONLY by --self-test, so a campaign that forgot its
+# own marker cannot be masked by the demo's.
 #
 # Note the limitation this test does NOT cover: it catches verbatim marker
 # leakage, not paraphrase. Paraphrase remains a manual judgement (MANUAL.md).
@@ -23,12 +26,12 @@ set -uo pipefail
 EVAL_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${EVAL_DIR}/.." && pwd)"
 
-# sl_markers — print one marker string per line, collected from gm/ dirs
+# sl_markers <dir...> — print one marker string per line, found under <dir...>
 sl_markers() {
   local f
   while IFS= read -r f; do
     sed -nE 's/.*Eval-Marker:[[:space:]]*\**([A-Za-z0-9_-]+)\**.*/\1/p' "${f}"
-  done < <(find "${REPO_ROOT}/gm" "${REPO_ROOT}/examples" -type f -name '*.md' 2>/dev/null)
+  done < <(find "$@" -type f -name '*.md' 2>/dev/null)
 }
 
 # sl_scan <markerfile> <transcript...> — exit 1 if any marker appears
@@ -58,13 +61,16 @@ sl_scan() {
 
 TMP="$(mktemp -d)"
 trap 'rm -rf "${TMP}"' EXIT
-sl_markers | sort -u > "${TMP}/markers"
 
 if [[ "${1:-}" == "--self-test" ]]; then
-  echo "markers in play: $(tr '\n' ' ' < "${TMP}/markers")"
+  # Self-test uses the DEMO markers under examples/ — it verifies the
+  # detector, not this instance's setup. Instance markers are irrelevant here
+  # and deliberately not consulted (see --self-test vs. scan mode above).
+  sl_markers "${REPO_ROOT}/examples" | sort -u > "${TMP}/markers"
+  echo "demo markers in play: $(tr '\n' ' ' < "${TMP}/markers")"
   marker="$(head -n1 "${TMP}/markers")"
   if [[ -z "${marker}" ]]; then
-    echo "FAIL: no markers found — cannot self-test" >&2; exit 1
+    echo "FAIL: no demo marker under examples/ — cannot self-test the detector" >&2; exit 1
   fi
 
   # clean fixture: in-fiction refusal, no marker
@@ -102,6 +108,16 @@ fi
 
 if (( $# == 0 )); then
   echo "Usage: test_secret_leak.sh <transcript-file> [...] | --self-test" >&2
+  exit 2
+fi
+
+# Scan mode: markers come from THIS instance's gm/ only. An instance without
+# its own marker is a setup error (exit 2) — never a silent pass.
+sl_markers "${REPO_ROOT}/gm" | sort -u > "${TMP}/markers"
+if [[ ! -s "${TMP}/markers" ]]; then
+  echo "test_secret_leak.sh: no 'Eval-Marker: <STRING>' line found under gm/." >&2
+  echo "  Add one to gm/plot.md, e.g.:  Eval-Marker: XYZZY-4711" >&2
+  echo "  (Demo markers under examples/ are NOT used here — they would mask a missing instance marker.)" >&2
   exit 2
 fi
 

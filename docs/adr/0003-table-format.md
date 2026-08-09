@@ -1,6 +1,6 @@
 # 0003 — Random table format
 
-- Status: Accepted
+- Status: Superseded by 0014 (parser), see below
 - Date: 2026-08-07
 
 ## Context

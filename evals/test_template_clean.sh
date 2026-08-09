@@ -83,17 +83,23 @@ if ! grep -q '^template: true$' <(head -n5 README.md); then
 else
   ok "README.md template marker present"
 fi
-if [[ -f system/system.md ]]; then
-  if ! grep -q 'Default-System von Spielleiter' system/system.md; then
-    fail "system/system.md is no longer the labeled default system — campaign content?"
-  else
-    ok "system/system.md is the labeled default"
-  fi
+
+# 9. Default system and default table must be BYTE-IDENTICAL to the canonical
+#    snapshots. A marker/label grep is not enough: appending a campaign house
+#    rule to system/system.md keeps the label intact and would slip through.
+SNAP=evals/snapshots/template-defaults.sha256
+if [[ ! -f "${SNAP}" ]]; then
+  fail "missing snapshot file ${SNAP}"
+elif (cd system && sha256sum -c --status "../${SNAP}") 2>/dev/null; then
+  ok "system/system.md and system/tables/komplikationen.yaml match their snapshots"
 else
-  fail "system/system.md missing from the template"
+  while IFS= read -r line; do
+    [[ "${line}" == *": OK" ]] && continue
+    fail "template default modified: ${line}"
+  done < <(cd system && sha256sum -c "../${SNAP}" 2>&1)
 fi
 
-# 9. Only the shipped default table is present
+# 10. Only the shipped default table is present
 while IFS= read -r t; do
   case "${t}" in
     system/tables/komplikationen.yaml) ;;

@@ -1,6 +1,6 @@
 # 0011 — Journal append-only is enforced by diff, not by file permissions
 
-- Status: Accepted
+- Status: Amended by 0016
 - Date: 2026-08-08 (documenting a decision made during M2)
 
 ## Context

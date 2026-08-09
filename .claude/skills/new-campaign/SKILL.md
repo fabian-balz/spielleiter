@@ -67,8 +67,10 @@ otherwise):
 ## 2. Spec-Gate
 
 Present a summary: system draft, setting, lines & veils, character sheet.
-**Wait for explicit approval. Do not write any file before it is given.**
-Revise and re-present on objections.
+**Wait for explicit approval. Write no campaign-specific content before it
+is given** — no rules, setting, characters, world entities or plot. The only
+writes permitted before this point are the empty scaffolds from step 0, and
+those must have been announced. Revise and re-present on objections.
 
 ## 3. Write skeleton (only after approval)
 

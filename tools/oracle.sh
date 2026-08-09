@@ -115,8 +115,14 @@ sl_table() {
   if [[ ! -f "${file}" ]]; then
     echo "oracle.sh: unknown table: ${table_id} (no ${file})" >&2; return 1
   fi
-  # Belt and braces: the resolved file must still sit directly in the tables
-  # directory (catches symlinks pointing out of the tree).
+  # A symlink at the leaf would escape the directory check below — `pwd -P`
+  # canonicalizes the containing directory, not the final path element.
+  if [[ -L "${file}" ]]; then
+    echo "oracle.sh: table ${table_id} is a symlink — refusing (tables must be real files)" >&2
+    return 1
+  fi
+  # Belt and braces: the containing directory must still be the tables
+  # directory after canonicalization (catches a symlinked tables dir).
   local resolved_dir tables_dir
   resolved_dir="$(cd "$(dirname "${file}")" 2>/dev/null && pwd -P)" || resolved_dir=""
   tables_dir="$(cd "${SL_TABLES_DIR}" 2>/dev/null && pwd -P)" || tables_dir=""
@@ -145,6 +151,13 @@ sl_table() {
   local entry
   if ! entry="$(sl_table_lookup "${file}" "${SL_TOTAL}")"; then
     echo "oracle.sh: table ${table_id} has no entry for roll ${SL_TOTAL}" >&2; return 1
+  fi
+  # The entry text lands in the log's result= field, so it is free text just
+  # like --reason: a '|' would forge extra fields (total=, reason=), a newline
+  # a whole extra roll. Same rule, same reason (G1).
+  if [[ "${entry}" == *"|"* || "${entry}" == *$'\n'* || "${entry}" == *$'\r'* ]]; then
+    echo "oracle.sh: table ${table_id} entry for roll ${SL_TOTAL} contains '|' or a line break — refusing to log it" >&2
+    return 1
   fi
   # shellcheck disable=SC2086
   sl_log_line "$(sl_timestamp) | table:${table_id} | dice=[$(sl_join_csv ${SL_DICE})] | total=${SL_TOTAL} | result=${entry} | reason=${reason}"

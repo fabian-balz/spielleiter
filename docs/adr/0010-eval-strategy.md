@@ -1,6 +1,6 @@
 # 0010 — Eval strategy: what is executable, what stays manual
 
-- Status: Accepted
+- Status: Amended by 0016
 - Date: 2026-08-08 (formalizing M2 practice, revised after PR review)
 
 ## Context

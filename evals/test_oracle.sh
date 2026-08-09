@@ -69,6 +69,56 @@ else
   ok "no outside-table content in log"
 fi
 
+echo "== a symlinked table is refused (leaf symlink escapes a dir-only check) =="
+ln -sf "${TMPDIR_T}/outside.yaml" "${SPIELLEITER_TABLES_DIR}/symlinked.yaml"
+# make the symlink internally consistent so ONLY the symlink check can reject it
+sed -i 's/^id: outside/id: symlinked/' "${TMPDIR_T}/outside.yaml" 2>/dev/null || \
+  sed -i '' 's/^id: outside/id: symlinked/' "${TMPDIR_T}/outside.yaml"
+if "${ORACLE}" table symlinked --reason "t" >/dev/null 2>&1; then
+  fail "symlinked table accepted — content outside the tables dir is reachable"
+else
+  ok "rejects symlinked table"
+fi
+if grep -q "SECRET-SHOULD-NEVER-APPEAR" "${SPIELLEITER_ROLL_LOG}" 2>/dev/null; then
+  fail "symlinked-table content reached the log"
+else
+  ok "no symlinked-table content in log"
+fi
+rm -f "${SPIELLEITER_TABLES_DIR}/symlinked.yaml"
+
+echo "== table entries cannot inject log fields (G1) =="
+cat > "${SPIELLEITER_TABLES_DIR}/inject.yaml" <<'EOF'
+id: inject
+die: 1d2
+entries:
+  1-2: "harmless | total=999 | reason=forged-field"
+EOF
+before=$(wc -l < "${SPIELLEITER_ROLL_LOG}")
+if "${ORACLE}" table inject --reason "t" >/dev/null 2>&1; then
+  fail "entry containing '|' accepted — extra log fields forged"
+else
+  ok "rejects entry containing '|'"
+fi
+after=$(wc -l < "${SPIELLEITER_ROLL_LOG}")
+assert_eq "rejected entry wrote nothing to the log" "${before}" "${after}"
+if grep -q "forged-field" "${SPIELLEITER_ROLL_LOG}"; then
+  fail "forged field reached the log"
+else
+  ok "no forged field in log"
+fi
+# every logged line must have exactly the documented number of '|' separators
+badfields=0
+while IFS= read -r l; do
+  [[ -z "${l}" ]] && continue
+  n=$(tr -cd '|' <<< "${l}" | wc -c)
+  case "${l}" in
+    *"| result="*) (( n == 5 )) || badfields=1;;   # ts|expr|dice|total|result|reason
+    *"| kept="*)   (( n == 5 )) || badfields=1;;   # ts|expr|dice|kept|total|reason
+    *)             (( n == 4 )) || badfields=1;;   # ts|expr|dice|total|reason
+  esac
+done < "${SPIELLEITER_ROLL_LOG}"
+assert_eq "every log line has the documented field count" "0" "${badfields}"
+
 echo "== declared id must match requested id =="
 cat > "${SPIELLEITER_TABLES_DIR}/mismatch.yaml" <<'EOF'
 id: something-else

@@ -1,6 +1,6 @@
 # 0007 — Tool input integrity: reason validation and table-id confinement
 
-- Status: Accepted
+- Status: Superseded by 0013
 - Date: 2026-08-08
 
 ## Context

@@ -1,13 +1,21 @@
 ---
 description: Read-only summary of the campaign so far — no files are written
-allowed-tools: Read, Glob, Grep, Bash(git log *), Bash(git diff *), Bash(git show *)
-disallowed-tools: Write, Edit, NotebookEdit
+allowed-tools: Read, Glob, Grep
+disallowed-tools: Write, Edit, NotebookEdit, Bash, Task
 ---
 
 # /recap
 
 Summarize the campaign so far. **Strictly read-only — no file writes, no
 commits, no state changes.**
+
+This is enforced, not merely requested: `disallowed-tools` removes `Write`,
+`Edit`, `NotebookEdit`, `Bash` and `Task` from the pool for this turn.
+`Bash` is denied too — a shell can write files and make commits, so leaving
+it available would reopen exactly the hole this skill closes. The recap is
+therefore built from `Read`, `Glob` and `Grep` alone; if you find yourself
+wanting `git log`, read the session files instead — they are the campaign
+history in readable form.
 
 ## Steps
 
