@@ -9,6 +9,9 @@ ROLL="${REPO_ROOT}/tools/roll.sh"
 TMPDIR_T="$(mktemp -d)"
 trap 'rm -rf "${TMPDIR_T}"' EXIT
 export SPIELLEITER_ROLL_LOG="${TMPDIR_T}/rolls.log"
+# See test_oracle.sh: assertions must never read a missing file, or they
+# pass vacuously.
+: > "${SPIELLEITER_ROLL_LOG}"
 
 PASS=0 FAIL=0
 
@@ -27,9 +30,10 @@ for expr in "" "d6" "2d" "2x6" "abc" "0d6" "2d1" "4d6kh5" "4d6kh0" "1d20++2" "10
     ok "rejects '${expr}'"
   fi
 done
-lines=0
-[[ -f "${SPIELLEITER_ROLL_LOG}" ]] && lines=$(wc -l < "${SPIELLEITER_ROLL_LOG}")
-assert_eq "no log lines written for invalid exprs" "0" "${lines}"
+if [[ ! -f "${SPIELLEITER_ROLL_LOG}" ]]; then
+  fail "log file vanished — later assertions would pass vacuously"
+fi
+assert_eq "no log lines written for invalid exprs" "0" "$(wc -l < "${SPIELLEITER_ROLL_LOG}")"
 
 echo "== --seed reproducibility =="
 a=$("${ROLL}" 4d6kh3 --seed 42 --reason "t" | cut -d'|' -f3-)

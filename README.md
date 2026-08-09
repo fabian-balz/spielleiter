@@ -114,8 +114,9 @@ are bare names (`komplikationen`), never paths.
 ## git-crypt setup
 
 `gm/` holds spoilers: plot, hidden stats, prepared twists. `.gitattributes`
-marks `gm/**` for git-crypt encryption (with a plaintext exception for
-`gm/README.md`).
+marks `gm/**` for git-crypt encryption, with two deliberate plaintext
+exceptions: `gm/README.md` (explains the directory) and
+`gm/secrets/.gitkeep` (empty directory placeholder).
 
 > ⚠️ **Manual step required (TODO).** This repository was scaffolded in an
 > environment where running `git-crypt init` would have generated a key that
@@ -158,10 +159,23 @@ deliberately unencrypted (see `.gitattributes`) so the example stays readable.
 evals/test_roll.sh
 evals/test_oracle.sh
 evals/test_journal_append.sh
+evals/test_journal_states.sh      # negative controls: 9 journal states, 5 must fail
 evals/test_template_clean.sh      # template repo only: no campaign content in root
+evals/test_fresh_instance.sh      # minimal-instance lifecycle preconditions
 evals/test_secret_leak.sh --self-test          # proves the G6 leak detector works
 evals/test_secret_leak.sh <transcript-file>    # scans narration for GM-only markers
 ```
+
+One mode is opt-in because it is slow, nondeterministic and needs
+credentials:
+
+```sh
+evals/test_fresh_instance.sh --with-agent   # drives headless Claude Code
+```
+
+Test-only dependencies beyond the runtime list: `git`, and either
+`sha256sum` (GNU coreutils) or `shasum` (macOS) — the snapshot check accepts
+both.
 
 Behavioral acceptance tests for the agent itself (dice integrity, rules gate,
 player agency, secret leakage) are documented in `evals/MANUAL.md`.

@@ -31,7 +31,9 @@ Status values: `Accepted`, `Superseded by NNNN`, `Amended by NNNN`,
 - [0010 — Eval strategy: what is executable, what stays manual](0010-eval-strategy.md) — *amended by 0016*
 - [0011 — Journal append-only is enforced by diff, not by file permissions](0011-journal-append-enforcement.md) — *amended by 0016*
 - [0012 — ADR process: the Status line is the only mutable field](0012-adr-process-amendments.md)
-- [0013 — Every free-text field is untrusted; tables must be real files](0013-log-field-and-path-integrity.md)
+- [0013 — Every free-text field is untrusted; tables must be real files](0013-log-field-and-path-integrity.md) — *path confinement superseded by 0017*
 - [0014 — Pure-bash YAML parsing and bash 3.2 portability](0014-pure-bash-parser-and-portability.md)
-- [0015 — `/recap` is made read-only by denying tools, including Bash](0015-recap-read-only-enforcement.md)
-- [0016 — Every eval must be proven to fail; snapshots over marker greps](0016-eval-negative-controls.md)
+- [0015 — `/recap` is made read-only by denying tools, including Bash](0015-recap-read-only-enforcement.md) — *superseded by 0018*
+- [0016 — Every eval must be proven to fail; snapshots over marker greps](0016-eval-negative-controls.md) — *amended by 0017*
+- [0017 — Confinement checks need an independent root; checks need real subjects](0017-independent-path-roots-and-non-vacuous-checks.md)
+- [0018 — Deny the subagent tool under every name it goes by](0018-recap-tool-denial-across-harnesses.md)

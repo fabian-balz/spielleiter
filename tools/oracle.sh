@@ -121,11 +121,27 @@ sl_table() {
     echo "oracle.sh: table ${table_id} is a symlink — refusing (tables must be real files)" >&2
     return 1
   fi
-  # Belt and braces: the containing directory must still be the tables
-  # directory after canonicalization (catches a symlinked tables dir).
-  local resolved_dir tables_dir
-  resolved_dir="$(cd "$(dirname "${file}")" 2>/dev/null && pwd -P)" || resolved_dir=""
+  # The tables directory itself must not be a symlink. Canonicalizing both
+  # sides of a comparison against the SAME symlink is tautological — it can
+  # never fail — so this is checked directly and independently.
+  if [[ -L "${SL_TABLES_DIR}" ]]; then
+    echo "oracle.sh: tables directory ${SL_TABLES_DIR} is a symlink — refusing" >&2
+    return 1
+  fi
+  # Without an explicit override, the tables directory is fixed by the repo
+  # layout; verify that independently rather than trusting the variable.
+  local tables_dir expected_dir
   tables_dir="$(cd "${SL_TABLES_DIR}" 2>/dev/null && pwd -P)" || tables_dir=""
+  if [[ -z "${SPIELLEITER_TABLES_DIR:-}" ]]; then
+    expected_dir="$(cd "${_SL_REPO_ROOT}/system/tables" 2>/dev/null && pwd -P)" || expected_dir=""
+    if [[ -z "${tables_dir}" || "${tables_dir}" != "${expected_dir}" ]]; then
+      echo "oracle.sh: tables directory is not ${_SL_REPO_ROOT}/system/tables — refusing" >&2
+      return 1
+    fi
+  fi
+  # The resolved file must sit directly in that directory.
+  local resolved_dir
+  resolved_dir="$(cd "$(dirname "${file}")" 2>/dev/null && pwd -P)" || resolved_dir=""
   if [[ -z "${resolved_dir}" || "${resolved_dir}" != "${tables_dir}" ]]; then
     echo "oracle.sh: table ${table_id} resolves outside ${SL_TABLES_DIR}" >&2; return 1
   fi

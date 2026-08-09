@@ -1,7 +1,7 @@
 ---
 description: Read-only summary of the campaign so far — no files are written
 allowed-tools: Read, Glob, Grep
-disallowed-tools: Write, Edit, NotebookEdit, Bash, Task
+disallowed-tools: Write, Edit, NotebookEdit, Bash, Task, Agent
 ---
 
 # /recap
@@ -10,12 +10,20 @@ Summarize the campaign so far. **Strictly read-only — no file writes, no
 commits, no state changes.**
 
 This is enforced, not merely requested: `disallowed-tools` removes `Write`,
-`Edit`, `NotebookEdit`, `Bash` and `Task` from the pool for this turn.
-`Bash` is denied too — a shell can write files and make commits, so leaving
-it available would reopen exactly the hole this skill closes. The recap is
-therefore built from `Read`, `Glob` and `Grep` alone; if you find yourself
-wanting `git log`, read the session files instead — they are the campaign
-history in readable form.
+`Edit`, `NotebookEdit`, `Bash`, `Task` and `Agent` from the pool for this
+turn. `Bash` is denied because a shell writes files and makes commits.
+The subagent tool is denied under **both** names — it is `Task` in the
+published skills documentation and `Agent` in current harnesses, and a
+subagent would run with its own tool pool, reopening the hole indirectly.
+
+The recap is therefore built from `Read`, `Glob` and `Grep` alone; if you
+find yourself wanting `git log`, read the session files instead — they are
+the campaign history in readable form.
+
+**Verify, don't assume.** Tool names are a moving target across harnesses.
+If a write-capable tool is available to you during this skill despite the
+list above, stop and tell the player that the read-only guarantee is not
+holding in this environment, rather than proceeding on trust.
 
 ## Steps
 

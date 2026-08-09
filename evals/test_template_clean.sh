@@ -88,15 +88,31 @@ fi
 #    snapshots. A marker/label grep is not enough: appending a campaign house
 #    rule to system/system.md keeps the label intact and would slip through.
 SNAP=evals/snapshots/template-defaults.sha256
+# Portable hashing: GNU coreutils ships sha256sum, stock macOS only shasum.
+sl_sha256() { # <file> -> bare hex digest
+  if command -v sha256sum >/dev/null 2>&1; then
+    sha256sum "$1" | cut -d' ' -f1
+  elif command -v shasum >/dev/null 2>&1; then
+    shasum -a 256 "$1" | cut -d' ' -f1
+  else
+    echo "NO-HASH-TOOL"
+  fi
+}
 if [[ ! -f "${SNAP}" ]]; then
   fail "missing snapshot file ${SNAP}"
-elif (cd system && sha256sum -c --status "../${SNAP}") 2>/dev/null; then
-  ok "system/system.md and system/tables/komplikationen.yaml match their snapshots"
+elif [[ "$(sl_sha256 /dev/null)" == "NO-HASH-TOOL" ]]; then
+  fail "neither sha256sum nor shasum available — cannot verify template defaults"
 else
-  while IFS= read -r line; do
-    [[ "${line}" == *": OK" ]] && continue
-    fail "template default modified: ${line}"
-  done < <(cd system && sha256sum -c "../${SNAP}" 2>&1)
+  # Report only the concrete mismatching files (no duplicate summary line).
+  while read -r want rel; do
+    [[ -z "${rel:-}" ]] && continue
+    got="$(sl_sha256 "system/${rel}")"
+    if [[ "${got}" == "${want}" ]]; then
+      ok "system/${rel} matches its snapshot"
+    else
+      fail "template default modified: system/${rel} (snapshot ${want:0:12}…, actual ${got:0:12}…)"
+    fi
+  done < "${SNAP}"
 fi
 
 # 10. Only the shipped default table is present

@@ -11,6 +11,10 @@ trap 'rm -rf "${TMPDIR_T}"' EXIT
 export SPIELLEITER_ROLL_LOG="${TMPDIR_T}/rolls.log"
 export SPIELLEITER_TABLES_DIR="${TMPDIR_T}/tables"
 mkdir -p "${SPIELLEITER_TABLES_DIR}"
+# Create the log up front: every assertion that counts or greps lines must
+# read a file that exists. Reading a missing file silently yields empty
+# output, which turns "no forged line in the log" into a vacuous pass.
+: > "${SPIELLEITER_ROLL_LOG}"
 
 cat > "${SPIELLEITER_TABLES_DIR}/testtable.yaml" <<'EOF'
 id: testtable
@@ -86,6 +90,29 @@ else
 fi
 rm -f "${SPIELLEITER_TABLES_DIR}/symlinked.yaml"
 
+echo "== a symlinked tables DIRECTORY is refused =="
+# Canonicalizing both sides against the same symlink is tautological, so the
+# directory has to be checked directly. Without this the whole tables tree
+# can be redirected outside the repo.
+mkdir -p "${TMPDIR_T}/realtables"
+cat > "${TMPDIR_T}/realtables/dirlinked.yaml" <<'EOF'
+id: dirlinked
+die: 1d2
+entries:
+  1-2: "DIRECTORY-SYMLINK-SHOULD-NEVER-APPEAR"
+EOF
+ln -sfn "${TMPDIR_T}/realtables" "${TMPDIR_T}/linkedtables"
+if SPIELLEITER_TABLES_DIR="${TMPDIR_T}/linkedtables" "${ORACLE}" table dirlinked --reason "t" >/dev/null 2>&1; then
+  fail "symlinked tables directory accepted — the whole table tree can be redirected"
+else
+  ok "rejects symlinked tables directory"
+fi
+if grep -q "DIRECTORY-SYMLINK-SHOULD-NEVER-APPEAR" "${SPIELLEITER_ROLL_LOG}" 2>/dev/null; then
+  fail "directory-symlink content reached the log"
+else
+  ok "no directory-symlink content in log"
+fi
+
 echo "== table entries cannot inject log fields (G1) =="
 cat > "${SPIELLEITER_TABLES_DIR}/inject.yaml" <<'EOF'
 id: inject
@@ -106,18 +133,48 @@ if grep -q "forged-field" "${SPIELLEITER_ROLL_LOG}"; then
 else
   ok "no forged field in log"
 fi
-# every logged line must have exactly the documented number of '|' separators
-badfields=0
-while IFS= read -r l; do
-  [[ -z "${l}" ]] && continue
-  n=$(tr -cd '|' <<< "${l}" | wc -c)
-  case "${l}" in
-    *"| result="*) (( n == 5 )) || badfields=1;;   # ts|expr|dice|total|result|reason
-    *"| kept="*)   (( n == 5 )) || badfields=1;;   # ts|expr|dice|kept|total|reason
-    *)             (( n == 4 )) || badfields=1;;   # ts|expr|dice|total|reason
-  esac
-done < "${SPIELLEITER_ROLL_LOG}"
-assert_eq "every log line has the documented field count" "0" "${badfields}"
+# Structural invariant: every log line carries exactly the documented number
+# of '|' separators. Checked against REAL lines produced right here — an
+# earlier version ran this over a log that did not exist yet and reported
+# "ok" over zero lines (a vacuous pass).
+sl_count_badfields() { # <file> -> prints number of malformed lines
+  local f=$1 bad=0 l n
+  while IFS= read -r l; do
+    [[ -z "${l}" ]] && continue
+    n=$(tr -cd '|' <<< "${l}" | wc -c)
+    case "${l}" in
+      *"| result="*) (( n == 5 )) || bad=$((bad+1));;   # ts|expr|dice|total|result|reason
+      *"| kept="*)   (( n == 5 )) || bad=$((bad+1));;   # ts|expr|dice|kept|total|reason
+      *)             (( n == 4 )) || bad=$((bad+1));;   # ts|expr|dice|total|reason
+    esac
+  done < "${f}"
+  echo "${bad}"
+}
+
+# produce valid lines of every shape, then assert the log is non-empty
+"${ORACLE}" yesno --seed 5 --reason "struktur-yesno" >/dev/null
+"${ORACLE}" table testtable --seed 5 --reason "struktur-table" >/dev/null
+"${REPO_ROOT}/tools/roll.sh" 2d6+1 --seed 5 --reason "struktur-roll" >/dev/null
+"${REPO_ROOT}/tools/roll.sh" 4d6kh3 --seed 5 --reason "struktur-kept" >/dev/null
+loglines=$(grep -c . "${SPIELLEITER_ROLL_LOG}")
+if (( loglines >= 4 )); then
+  ok "structure check has ${loglines} real log lines to inspect (not vacuous)"
+else
+  fail "structure check would run over ${loglines} lines — vacuous"
+fi
+assert_eq "every real log line has the documented field count" "0" "$(sl_count_badfields "${SPIELLEITER_ROLL_LOG}")"
+
+# negative control: a hand-forged log with an injected field MUST be flagged
+cat > "${TMPDIR_T}/tampered.log" <<'EOF'
+2026-01-01T00:00:00Z | 1d6 | dice=[3] | total=3 | reason=ok
+2026-01-01T00:00:01Z | table:x | dice=[1] | total=1 | result=harmless | total=999 | reason=forged | reason=t
+EOF
+tampered_bad=$(sl_count_badfields "${TMPDIR_T}/tampered.log")
+if (( tampered_bad >= 1 )); then
+  ok "structure check flags a tampered log (negative control)"
+else
+  fail "structure check did NOT flag a tampered log — the check is worthless"
+fi
 
 echo "== declared id must match requested id =="
 cat > "${SPIELLEITER_TABLES_DIR}/mismatch.yaml" <<'EOF'

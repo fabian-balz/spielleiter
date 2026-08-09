@@ -1,6 +1,6 @@
 # 0015 — `/recap` is made read-only by denying tools, including Bash
 
-- Status: Accepted
+- Status: Superseded by 0018
 - Date: 2026-08-09
 - Supersedes: 0004 (the `/recap` enforcement claim; the skills-over-commands
   decision itself stands)

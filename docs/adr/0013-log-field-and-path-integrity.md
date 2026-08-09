@@ -1,6 +1,6 @@
 # 0013 — Every free-text field is untrusted; tables must be real files
 
-- Status: Accepted
+- Status: Superseded by 0017
 - Date: 2026-08-09
 - Supersedes: 0007
 

@@ -31,7 +31,14 @@ sl_check_diff() {
   while IFS=$'\t' read -r added deleted path; do
     [[ -z "${path:-}" ]] && continue
     checked=$((checked+1))
-    if [[ "${deleted}" != "0" && "${deleted}" != "-" ]]; then
+    if [[ "${deleted}" == "-" || "${added}" == "-" ]]; then
+      # git reports "-  -" for binary files: line-based append-only cannot be
+      # verified, so a modified binary under journal/ is a violation by
+      # definition. Treating "-" as "zero deletions" let a full binary
+      # rewrite pass.
+      echo "FAIL [${label}]: ${path} is binary — journal files must be text so appends are verifiable (G4)" >&2
+      FAILS=$((FAILS+1))
+    elif [[ "${deleted}" != "0" ]]; then
       echo "FAIL [${label}]: ${path} has ${deleted} deleted line(s) — journal files are append-only (G4)" >&2
       FAILS=$((FAILS+1))
     else

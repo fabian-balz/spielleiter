@@ -1,6 +1,6 @@
 # 0016 — Every eval must be proven to fail; snapshots over marker greps
 
-- Status: Accepted
+- Status: Amended by 0017
 - Date: 2026-08-09
 - Amends: 0010, 0011
 

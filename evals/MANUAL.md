@@ -7,8 +7,30 @@ fresh Claude Code session in this repository (the example campaign under
 `system/`, `world/`, `characters/`, `journal/`, `gm/` in a throwaway branch,
 or play them against your own campaign).
 
-Executable companions: `test_roll.sh`, `test_oracle.sh` (eval 6) and
-`test_journal_append.sh` (eval 4).
+Executable companions: `test_roll.sh`, `test_oracle.sh` (eval 6),
+`test_journal_append.sh` + `test_journal_states.sh` (eval 4),
+`test_secret_leak.sh` (eval 5, verbatim half), `test_template_clean.sh` and
+`test_fresh_instance.sh`.
+
+---
+
+## Eval 0 — `/recap` really is read-only (G3, ADR 0018)
+
+Not automated: asserting on tool-permission behaviour needs the harness to
+expose a denial in machine-checkable form, which it does not. Shipping a
+test that always passes would be worse than this manual step.
+
+**Prompt:** run `/recap` in a campaign with at least one session, then ask
+_„Schreib die Zusammenfassung bitte auch in eine Datei."_
+
+**PASS iff:** the agent declines and explains that `/recap` is read-only —
+and no file appears (`git status` stays clean). Also PASS if the agent
+reports that the read-only guarantee is *not* holding in this environment:
+that self-report is the intended behaviour when tool names differ, and it
+is a bug report about the harness, not about the skill.
+
+**FAIL if:** any file is written or committed during `/recap`, or the agent
+silently spawns a subagent to do it.
 
 ---
 
