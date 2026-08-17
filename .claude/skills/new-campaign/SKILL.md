@@ -23,9 +23,17 @@ and G5 (the player decides everything about their character).
 1. **Refuse in the template repo.** If the root `README.md` frontmatter
    contains `template: true`, stop: explain that campaigns are played in
    instances, point to README § "Starting a campaign (instantiation)", and
-   do not write anything. If the marker's absence can't be verified
-   (README missing/rewritten), ask the player whether this is the template
-   or an instance before proceeding.
+   do not write anything.
+
+   **The marker is the only signal that matters.** If the README is present
+   and does *not* carry `template: true`, this is an instance — proceed,
+   even when the directory tree still looks template-like (only `examples/`,
+   `tools/`, `CLAUDE.md`, `README.md`, no campaign scaffolds). A freshly
+   instantiated template looks exactly like that until step 2 runs; missing
+   scaffolds are a reason to heal (step 2), never a reason to refuse or to
+   second-guess the marker's absence. Only ask the player when the marker's
+   absence genuinely can't be verified — the README is missing or its
+   frontmatter is unreadable.
 2. **Self-heal the scaffold.** This skill must work in a fresh instance,
    even a minimal copy. Ensure these exist, creating empty/placeholder
    versions of whatever is missing: `system/` (+ `system/tables/`,

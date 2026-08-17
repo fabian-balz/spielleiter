@@ -121,21 +121,26 @@ sl_table() {
     echo "oracle.sh: table ${table_id} is a symlink — refusing (tables must be real files)" >&2
     return 1
   fi
-  # The tables directory itself must not be a symlink. Canonicalizing both
-  # sides of a comparison against the SAME symlink is tautological — it can
-  # never fail — so this is checked directly and independently.
+  # The tables directory (its final component) must not itself be a symlink.
   if [[ -L "${SL_TABLES_DIR}" ]]; then
     echo "oracle.sh: tables directory ${SL_TABLES_DIR} is a symlink — refusing" >&2
     return 1
   fi
-  # Without an explicit override, the tables directory is fixed by the repo
-  # layout; verify that independently rather than trusting the variable.
-  local tables_dir expected_dir
+  local tables_dir
   tables_dir="$(cd "${SL_TABLES_DIR}" 2>/dev/null && pwd -P)" || tables_dir=""
+  # Without an explicit override the tables directory is fixed by the repo
+  # layout, and it must be reachable WITHOUT crossing any symlink — an
+  # ancestor symlink (e.g. `system -> /elsewhere`) would otherwise redirect
+  # the whole tree. The check compares the physical resolution against the
+  # LOGICAL path built from the physical repo root: resolving BOTH sides would
+  # canonicalize through the same manipulated symlink and always compare equal
+  # (the round-3 bug). Building expected_dir by concatenation avoids that.
   if [[ -z "${SPIELLEITER_TABLES_DIR:-}" ]]; then
-    expected_dir="$(cd "${_SL_REPO_ROOT}/system/tables" 2>/dev/null && pwd -P)" || expected_dir=""
-    if [[ -z "${tables_dir}" || "${tables_dir}" != "${expected_dir}" ]]; then
-      echo "oracle.sh: tables directory is not ${_SL_REPO_ROOT}/system/tables — refusing" >&2
+    local repo_phys expected_dir
+    repo_phys="$(cd "${_SL_REPO_ROOT}" 2>/dev/null && pwd -P)" || repo_phys=""
+    expected_dir="${repo_phys}/system/tables"   # logical, NOT resolved
+    if [[ -z "${repo_phys}" || -z "${tables_dir}" || "${tables_dir}" != "${expected_dir}" ]]; then
+      echo "oracle.sh: tables directory resolves outside the repository (symlink in the path?) — refusing" >&2
       return 1
     fi
   fi

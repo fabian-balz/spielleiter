@@ -176,6 +176,47 @@ else
   fail "structure check did NOT flag a tampered log — the check is worthless"
 fi
 
+echo "== an ANCESTOR symlink (system -> elsewhere) is refused, no override =="
+# The no-override path keys off the tool's own repo root (BASH_SOURCE/../..),
+# so this builds a throwaway repo, symlinks `system` out of tree, and runs
+# with SPIELLEITER_TABLES_DIR unset. Resolving both sides of the check
+# through the same `system` symlink would compare equal (the round-3 bug);
+# the fix compares against a logical path built from the physical repo root.
+PREPO="${TMPDIR_T}/prepo"
+mkdir -p "${PREPO}/tools" "${PREPO}/journal" "${TMPDIR_T}/ext-system/tables"
+cp "${REPO_ROOT}/tools/roll.sh" "${REPO_ROOT}/tools/oracle.sh" "${PREPO}/tools/"
+cat > "${TMPDIR_T}/ext-system/tables/secret.yaml" <<'EOF'
+id: secret
+die: 1d2
+entries:
+  1-2: "PARENT-SYMLINK-LEAK-92841"
+EOF
+ln -sfn "${TMPDIR_T}/ext-system" "${PREPO}/system"
+prepo_log="${PREPO}/journal/rolls.log"
+: > "${prepo_log}"
+if ( cd "${PREPO}" && env -u SPIELLEITER_TABLES_DIR SPIELLEITER_ROLL_LOG="${prepo_log}" \
+      tools/oracle.sh table secret --reason "t" ) >/dev/null 2>&1; then
+  fail "ancestor-symlink (system -> external) accepted — whole table tree redirected"
+else
+  ok "rejects ancestor symlink in the tables path"
+fi
+if grep -q "PARENT-SYMLINK-LEAK-92841" "${prepo_log}" 2>/dev/null; then
+  fail "ancestor-symlink content reached the log"
+else
+  ok "no ancestor-symlink content in log"
+fi
+# and the same layout with a REAL system dir still resolves the default table
+rm -f "${PREPO}/system"
+mkdir -p "${PREPO}/system/tables"
+cp "${REPO_ROOT}/system/tables/komplikationen.yaml" "${PREPO}/system/tables/"
+: > "${prepo_log}"
+if ( cd "${PREPO}" && env -u SPIELLEITER_TABLES_DIR SPIELLEITER_ROLL_LOG="${prepo_log}" \
+      tools/oracle.sh table komplikationen --reason "t" ) >/dev/null 2>&1; then
+  ok "a real (non-symlinked) system/tables still resolves"
+else
+  fail "false positive: a real system/tables was refused"
+fi
+
 echo "== declared id must match requested id =="
 cat > "${SPIELLEITER_TABLES_DIR}/mismatch.yaml" <<'EOF'
 id: something-else
