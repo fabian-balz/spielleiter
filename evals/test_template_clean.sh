@@ -5,7 +5,7 @@
 set -uo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-cd "${REPO_ROOT}"
+cd "${REPO_ROOT}" || { echo "test_template_clean.sh: cannot cd to ${REPO_ROOT}" >&2; exit 2; }
 
 if ! head -n5 README.md 2>/dev/null | grep -q '^template: true$'; then
   echo "test_template_clean.sh: no template marker — campaign instance, nothing to check"

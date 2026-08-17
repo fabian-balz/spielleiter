@@ -65,7 +65,14 @@ expect 1 "rewrite staged, worktree restored (masked MM)"
 
 rm -f "${SESSION}";                                                    expect 1 "session file deleted"
 
-# binary file: line-based append-only is unverifiable, so it must be refused
+# a NEWLY ADDED binary file: journal/ is text-only, so even an addition is
+# refused — git reports '-  -' for it, and "unverifiable append" means "no"
+printf 'A\x00B\x00C\x00' > "${REPO}/journal/added.bin"
+git -C "${REPO}" add -A
+expect 1 "newly added binary file"
+git -C "${REPO}" rm -q --cached journal/added.bin 2>/dev/null; rm -f "${REPO}/journal/added.bin"
+
+# a binary file REWRITE: line-based append-only is unverifiable, so refused
 printf 'A\x00B\x00C\x00' > "${REPO}/journal/blob.bin"
 git -C "${REPO}" add -A
 git -C "${REPO}" -c user.name=t -c user.email=t@t commit -qm "binary"

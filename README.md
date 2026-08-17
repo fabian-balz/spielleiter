@@ -180,6 +180,14 @@ both.
 Behavioral acceptance tests for the agent itself (dice integrity, rules gate,
 player agency, secret leakage) are documented in `evals/MANUAL.md`.
 
+## Continuous integration
+
+`.github/workflows/evals.yml` runs the deterministic suites and a
+`shellcheck` lint (warning severity) on every push and pull request. The
+opt-in `--with-agent` lifecycle mode and the manual behavioral evals
+(`evals/MANUAL.md`) are not part of CI — the former needs credentials, the
+latter need a human.
+
 ## Developing the template
 
 Architectural decisions are recorded as ADRs in `docs/adr/` — at decision

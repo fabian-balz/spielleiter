@@ -1,0 +1,71 @@
+name: evals
+
+# Runs the deterministic eval suites on every push and PR. These are the
+# same suites three review rounds found holes in; CI makes a regression in
+# any of them visible before a human review does.
+#
+# The --with-agent lifecycle mode is intentionally NOT run here: it needs
+# Claude Code credentials and is nondeterministic (ADR 0016). Behavioral
+# evals 0–3 (evals/MANUAL.md) are manual by design and also excluded.
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  evals:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # test_journal_append.sh / test_journal_states.sh inspect real git
+          # history, so a shallow single-commit checkout would starve them.
+          fetch-depth: 0
+
+      - name: Tool versions
+        run: |
+          bash --version | head -1
+          git --version
+          sha256sum --version | head -1 || shasum -a 256 /dev/null
+
+      - name: roll.sh unit tests
+        run: evals/test_roll.sh
+
+      - name: oracle.sh unit tests
+        run: evals/test_oracle.sh
+
+      - name: journal append-only check
+        run: evals/test_journal_append.sh
+
+      - name: journal state matrix (negative controls)
+        run: evals/test_journal_states.sh
+
+      - name: template cleanliness
+        run: evals/test_template_clean.sh
+
+      - name: fresh-instance lifecycle (deterministic part)
+        run: evals/test_fresh_instance.sh
+
+      - name: secret-leak detector self-test
+        run: evals/test_secret_leak.sh --self-test
+
+  shellcheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install shellcheck
+        run: sudo apt-get update && sudo apt-get install -y shellcheck
+      - name: Lint tools and evals
+        # Every finding in three review rounds was in shell code, so warnings
+        # and errors fail the build. --severity=warning lets info-level notes
+        # through: the only ones present are SC2015 (A && B || C) on test
+        # assertion helpers where B cannot fail — an intentional idiom, not a
+        # bug. SC1091 is excluded because oracle.sh sources roll.sh by a
+        # runtime-relative path shellcheck cannot follow statically.
+        run: |
+          shellcheck --severity=warning --external-sources --exclude=SC1091 \
+            tools/roll.sh tools/oracle.sh evals/*.sh
