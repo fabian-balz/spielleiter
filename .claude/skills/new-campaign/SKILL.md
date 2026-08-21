@@ -58,9 +58,17 @@ and G5 (the player decides everything about their character).
      default system's success-with-cost rule cites this table, so a heal
      without it leaves `system.md` referencing a table that cannot roll.
    - `journal/rolls.log` stays byte-empty; `.gitkeep` files must be empty.
-   - Create **no other files** under `system/`, `world/`, `characters/`,
-     `journal/`, or `gm/` before the Spec-Gate — the whole scaffold is an
-     exact manifest, not a theme.
+   - Create **no other files and no other directories** under `system/`,
+     `world/`, `characters/`, `journal/`, or `gm/` before the Spec-Gate,
+     and never create symlinks there — every scaffold entry is a real
+     regular file or a real directory. The whole scaffold is an exact
+     manifest, not a theme (ADR 0019).
+   - A fresh "Use this template" instance already ships
+     `world/README.md`, `characters/README.md`, `gm/README.md`, and
+     `journal/sessions/.gitkeep`. These are part of the manifest: leave
+     them byte-unchanged if present; do not re-author or "improve" them,
+     and do not create them if absent — healing only restores the
+     required entries listed above.
 3. **Ensure `system/system.md` exists.** Step 1 below offers the default
    system as one of two paths and step 3 edits this file, so it must be
    present. If it is missing, restore the canonical default from

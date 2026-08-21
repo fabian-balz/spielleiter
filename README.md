@@ -180,8 +180,10 @@ repo, and in an instance it must self-heal the scaffold while writing no
 campaign content before approval.
 
 Test-only dependencies beyond the runtime list: `git`, `diff` and `cmp`
-(`diffutils` on GNU systems), and either `sha256sum` (GNU coreutils) or
-`shasum` (macOS) — the snapshot check accepts both.
+(`diffutils` on GNU systems), `mkfifo` (POSIX; present on GNU and macOS —
+one negative control degrades to a skip note without it), and either
+`sha256sum` (GNU coreutils) or `shasum` (macOS) — the snapshot check
+accepts both.
 
 Behavioral acceptance tests for the agent itself (dice integrity, rules gate,
 player agency, secret leakage) are documented in `evals/MANUAL.md`.
