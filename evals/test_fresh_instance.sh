@@ -143,6 +143,83 @@ campaign_content() { # count session + world/character entity files
     -type f ! -name 'README.md' 2>/dev/null | wc -l
 }
 
+# --- strict post-/new-campaign checker (reused by fake- and real-agent runs) --
+# The skill's step 0 must, before the interview, repair EVERY scaffold and
+# restore the canonical default system unchanged, while writing no
+# campaign-specific content. So the check requires all of that — no "3 of 5"
+# and no "asked instead of healing" escape hatch (asking would violate a skill
+# that mandates heal-then-interview once the marker is absent).
+SL_REQUIRED_DIRS=(system system/tables world characters journal journal/sessions gm gm/secrets)
+SL_REQUIRED_FILES=(system/system.md system/rulings.md journal/rolls.log gm/plot.md)
+
+# check_instance_healed <dir> — 0 iff fully healed AND Spec-Gate held.
+# Prints each defect to stdout; callers redirect if they only want the verdict.
+check_instance_healed() {
+  local d=$1 good=1 p cc
+  cc=$(find "${d}/journal/sessions" "${d}/world" "${d}/characters" \
+         -type f ! -name 'README.md' 2>/dev/null | wc -l)
+  if [[ "${cc}" != "0" ]]; then
+    echo "    Spec-Gate breach: ${cc} campaign file(s) before approval"; good=0
+  fi
+  for p in "${SL_REQUIRED_DIRS[@]}"; do
+    [[ -d "${d}/${p}" ]] || { echo "    missing directory: ${p}"; good=0; }
+  done
+  for p in "${SL_REQUIRED_FILES[@]}"; do
+    [[ -f "${d}/${p}" ]] || { echo "    missing file: ${p}"; good=0; }
+  done
+  if [[ -f "${d}/system/system.md" ]] \
+     && ! diff -q "${d}/system/system.md" "${REPO_ROOT}/system/system.md" >/dev/null 2>&1; then
+    echo "    system/system.md is not the canonical default (must be restored unchanged)"; good=0
+  fi
+  (( good ))
+}
+
+# fake_heal <dir> <complete|incomplete> — stand-in for what /new-campaign's
+# step 0 should produce, so the checker can be proven both ways WITHOUT the
+# claude CLI (these controls run in CI too).
+fake_heal() {
+  local d=$1 mode=$2
+  mkdir -p "${d}/system/tables" "${d}/world" "${d}/characters"
+  if [[ "${mode}" == complete ]]; then
+    mkdir -p "${d}/journal/sessions" "${d}/gm/secrets"
+    cp "${REPO_ROOT}/system/system.md"                  "${d}/system/system.md"
+    cp "${REPO_ROOT}/system/rulings.md"                 "${d}/system/rulings.md"
+    cp "${REPO_ROOT}/system/tables/komplikationen.yaml" "${d}/system/tables/"
+    cp "${REPO_ROOT}/gm/plot.md"                        "${d}/gm/plot.md"
+    : > "${d}/gm/secrets/.gitkeep"
+    : > "${d}/journal/rolls.log"
+  fi
+  # incomplete: only system/world/characters — no journal, no gm, no system.md
+}
+
+echo "== the heal checker is non-vacuous (fake-agent negative controls) =="
+fc="${TMPDIR_T}/fake-complete";  fake_heal "${fc}" complete
+if check_instance_healed "${fc}" >/dev/null; then
+  ok "a complete heal is accepted"
+else
+  fail "a complete heal was rejected — checker has a false negative"
+fi
+fi_="${TMPDIR_T}/fake-incomplete"; fake_heal "${fi_}" incomplete
+if check_instance_healed "${fi_}" >/dev/null; then
+  fail "an INCOMPLETE heal was accepted — the check is vacuous"
+else
+  ok "an incomplete heal is rejected (missing journal/gm/system.md)"
+fi
+ft="${TMPDIR_T}/fake-tampered"; fake_heal "${ft}" complete
+printf '\n## Hausregel\nX\n' >> "${ft}/system/system.md"
+if check_instance_healed "${ft}" >/dev/null; then
+  fail "a tampered system/system.md was accepted — byte-exact check missing"
+else
+  ok "a modified default system is rejected (must be restored unchanged)"
+fi
+fs="${TMPDIR_T}/fake-specgate"; fake_heal "${fs}" complete
+echo "Ein NSC" > "${fs}/world/wache.md"
+if check_instance_healed "${fs}" >/dev/null; then
+  fail "pre-approval campaign content was accepted — Spec-Gate not enforced"
+else
+  ok "campaign content written before approval is rejected"
+fi
+
 if (( WITH_AGENT )); then
   if ! command -v claude >/dev/null 2>&1; then
     fail "--with-agent requested but the claude CLI is not installed"
@@ -180,44 +257,21 @@ if (( WITH_AGENT )); then
     # can never run (it just reports a "permissions wall"). The instance is a
     # throwaway temp dir, so auto-accepting edits here is safe.
     reply=$(cd "${INST}" && sl_timeout 240 claude -p --permission-mode acceptEdits \
-      "Run /new-campaign. Perform the step-0 scaffold repair, then begin the interview. Do NOT write any campaign-specific content yet — stop at the first question." 2>&1)
-    after=$(campaign_content)
-    # HARD invariant (the security-relevant one, and it is deterministic): the
-    # agent must never write campaign-specific content before approval.
-    if [[ "${after}" == "0" ]]; then
-      ok "Spec-Gate held: no campaign-specific content written before approval"
+      "Run /new-campaign. Perform the step-0 scaffold repair — recreate EVERY missing directory and placeholder and restore the default system/system.md unchanged — then begin the interview. Do NOT write any campaign-specific content yet; stop at the first question." 2>&1)
+    # Same strict checker the fake-agent controls are proven against: full
+    # scaffold repair, canonical system.md, and no campaign content. Since the
+    # marker is absent the skill mandates heal-then-interview, so an agent that
+    # only asks — or heals partially — is a real failure, not an accepted case.
+    if check_instance_healed "${INST}"; then
+      ok "agent fully healed the scaffold, restored the default, and held the Spec-Gate"
     else
-      fail "Spec-Gate breach: ${after} campaign file(s) written before approval"
+      fail "agent did not fully heal / hold the Spec-Gate (defects above); reply: $(head -c 240 <<< "${reply}")"
     fi
-    # Progress check. The agent may legitimately EITHER heal the scaffold OR
-    # ask a clarifying question first (G5) — both are acceptable one-turn
-    # outcomes. What is NOT acceptable is refusing outright as if this were
-    # the template. Asserting "healed" alone would be a flaky test of
-    # nondeterministic behaviour; asserting "healed OR asked, but did not
-    # wrongly refuse" is the real contract.
-    healed=0
-    for d in system journal/sessions world characters gm; do
-      [[ -e "${INST}/${d}" ]] && healed=$((healed+1))
-    done
-    asked=0
-    grep -qiE '\?|frage|welche|which|confirm|bestätig|instanz|instance' <<< "${reply}" && asked=1
-    wrong_refuse=0
-    grep -qiE 'refus|template repo|is the template|vorlage' <<< "${reply}" && wrong_refuse=1
-    if (( healed >= 3 )); then
-      ok "scaffold repair ran (${healed}/5 paths recreated)"
-    elif (( asked )) && (( ! wrong_refuse )); then
-      ok "agent asked to proceed instead of healing silently (acceptable per G5)"
+    # tools must remain executable after the run (skill step 0 also chmods)
+    if [[ -x "${INST}/tools/roll.sh" && -x "${INST}/tools/oracle.sh" ]]; then
+      ok "dice tools are executable in the healed instance"
     else
-      fail "agent neither healed nor asked, or wrongly refused as template: $(head -c 240 <<< "${reply}")"
-    fi
-    # If system/system.md was restored, it must be the canonical default.
-    if [[ -f "${INST}/system/system.md" ]]; then
-      if diff -q "${INST}/system/system.md" "${REPO_ROOT}/system/system.md" >/dev/null 2>&1 \
-         || diff -q "${INST}/system/system.md" "${REPO_ROOT}/examples/mini-campaign/system/system.md" >/dev/null 2>&1; then
-        ok "restored system/system.md matches the canonical default"
-      else
-        ok "system/system.md present (agent may have started distilling; not a Spec-Gate breach)"
-      fi
+      fail "dice tools not executable after the run"
     fi
   fi
 else
