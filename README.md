@@ -159,7 +159,7 @@ deliberately unencrypted (see `.gitattributes`) so the example stays readable.
 evals/test_roll.sh
 evals/test_oracle.sh
 evals/test_journal_append.sh
-evals/test_journal_states.sh      # negative controls: 10 journal states, 6 must fail
+evals/test_journal_states.sh      # negative controls: 13 journal states, 9 must fail
 evals/test_template_clean.sh      # template repo only: no campaign content in root
 evals/test_fresh_instance.sh      # minimal-instance lifecycle preconditions
 evals/test_secret_leak.sh --self-test          # proves the G6 leak detector works
@@ -179,9 +179,9 @@ unbounded. It drives two headless turns: the agent must refuse in a template
 repo, and in an instance it must self-heal the scaffold while writing no
 campaign content before approval.
 
-Test-only dependencies beyond the runtime list: `git`, `diff` (diffutils),
-and either `sha256sum` (GNU coreutils) or `shasum` (macOS) — the snapshot
-check accepts both.
+Test-only dependencies beyond the runtime list: `git`, `diff` and `cmp`
+(`diffutils` on GNU systems), and either `sha256sum` (GNU coreutils) or
+`shasum` (macOS) — the snapshot check accepts both.
 
 Behavioral acceptance tests for the agent itself (dice integrity, rules gate,
 player agency, secret leakage) are documented in `evals/MANUAL.md`.

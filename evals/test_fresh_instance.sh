@@ -155,7 +155,8 @@ campaign_content() { # count session + world/character entity files
 # that mandates heal-then-interview once the marker is absent).
 SL_REQUIRED_DIRS=(system system/tables world characters journal journal/sessions gm gm/secrets)
 SL_REQUIRED_FILES=(system/system.md system/rulings.md system/tables/komplikationen.yaml
-                   journal/rolls.log gm/plot.md)
+                   journal/rolls.log gm/plot.md gm/secrets/.gitkeep)
+SL_PROTECTED_ROOTS=(system world characters journal gm)
 
 # check_instance_healed <dir> — 0 iff fully healed AND Spec-Gate held.
 # Prints each defect to stdout; callers redirect if they only want the verdict.
@@ -164,19 +165,31 @@ SL_REQUIRED_FILES=(system/system.md system/rulings.md system/tables/komplikation
 # every writable sink the Spec-Gate protects is checked by CONTENT — a
 # plot.md carrying a twist, a rulings.md carrying a rule, and a rolls.log
 # carrying a roll are campaign content wearing scaffold filenames. Symlinks
-# are rejected for every required path: [[ -d ]]/[[ -f ]] follow symlinks
-# while find does not traverse a command-line directory symlink, so a
-# symlinked world/ could hide arbitrary content from the file count.
+# are rejected recursively throughout every protected root. This must inspect
+# link entries themselves: find -type f neither reports symlinks nor traverses
+# symlinked directories, so it cannot prove that the protected tree is real.
 check_instance_healed() {
-  local d=$1 good=1 p cc
+  local d=$1 good=1 p cc breach symlinks secret_keep secret_entry
+  local protected_paths=()
   for p in "${SL_REQUIRED_DIRS[@]}" "${SL_REQUIRED_FILES[@]}"; do
     if [[ -L "${d}/${p}" ]]; then
       echo "    symlinked scaffold path: ${p} (must be a real file/directory)"; good=0
     fi
   done
+  # Inspect all entries, not only regular files. A nested directory symlink is
+  # itself visible to find -type l even though find will not follow it.
+  for p in "${SL_PROTECTED_ROOTS[@]}"; do
+    protected_paths[${#protected_paths[@]}]="${d}/${p}"
+  done
+  symlinks=$(find "${protected_paths[@]}" -type l -print 2>/dev/null)
+  if [[ -n "${symlinks}" ]]; then
+    cc=$(( $(wc -l <<< "${symlinks}") ))
+    echo "    ${cc} symlink(s) in protected scaffold (files and directories are forbidden):"
+    sed 's|^|      |' <<< "${symlinks}"
+    good=0
+  fi
   # EMPTY .gitkeep files are legitimate scaffolding, not campaign content;
   # a NON-empty .gitkeep is content hiding behind a placeholder name.
-  local breach
   breach=$(find "${d}/journal/sessions" "${d}/world" "${d}/characters" \
              -type f ! -name 'README.md' ! \( -name '.gitkeep' -size 0 \) 2>/dev/null)
   if [[ -n "${breach}" ]]; then
@@ -214,30 +227,31 @@ check_instance_healed() {
   if [[ -s "${d}/journal/rolls.log" ]]; then
     echo "    journal/rolls.log is not empty — pre-approval roll(s) present"; good=0
   fi
-  # gm/plot.md must be placeholder-only (same rule as test_template_clean):
-  # every content line is a header, blockquote, em-dash placeholder, or blank
-  if [[ -f "${d}/gm/plot.md" ]] && grep -vE '^(#|>|—|$)' "${d}/gm/plot.md" | grep -q .; then
-    echo "    gm/plot.md contains non-placeholder content — plot is campaign content"; good=0
+  # Allowed Markdown line shapes are not a specification: an attacker can put
+  # arbitrary plot content in headings or blockquotes. Require the exact
+  # placeholder bytes shipped by the template.
+  if [[ -f "${d}/gm/plot.md" ]] \
+     && ! cmp -s "${d}/gm/plot.md" "${REPO_ROOT}/gm/plot.md"; then
+    echo "    gm/plot.md differs from the canonical template placeholder"; good=0
   fi
-  # system/rulings.md must contain no accepted rulings: the append-only
-  # separator must exist and nothing may follow it. Requiring the separator
-  # closes the rewrite-without-separator hole; scoping the check to after it
-  # avoids matching the '## R-NNN' FORMAT EXAMPLE the canonical placeholder
-  # carries before the separator.
-  if [[ -f "${d}/system/rulings.md" ]]; then
-    if ! grep -q '^---$' "${d}/system/rulings.md"; then
-      echo "    system/rulings.md lacks the append-only separator — not the placeholder format"; good=0
-    elif sed -n '/^---$/,$p' "${d}/system/rulings.md" | tail -n +2 | grep -q .; then
-      echo "    system/rulings.md contains ruling(s) — campaign content"; good=0
+  # Checking only the suffix after --- lets a ruling hide before the separator.
+  # The canonical placeholder is the complete byte-level contract.
+  if [[ -f "${d}/system/rulings.md" ]] \
+     && ! cmp -s "${d}/system/rulings.md" "${REPO_ROOT}/system/rulings.md"; then
+    echo "    system/rulings.md differs from the canonical template placeholder"; good=0
+  fi
+  # gm/secrets/ must contain exactly one entry: a byte-empty, regular
+  # .gitkeep. Walk every entry so directories and symlinks cannot disappear
+  # behind a find -type f filter.
+  secret_keep="${d}/gm/secrets/.gitkeep"
+  if [[ -L "${secret_keep}" || ! -f "${secret_keep}" || -s "${secret_keep}" ]]; then
+    echo "    gm/secrets/.gitkeep must be an empty regular file"; good=0
+  fi
+  while IFS= read -r secret_entry; do
+    if [[ "${secret_entry}" != "${secret_keep}" ]]; then
+      echo "    unexpected entry in gm/secrets/: ${secret_entry#${d}/gm/secrets/}"; good=0
     fi
-  fi
-  # gm/secrets/ may hold nothing but its .gitkeep placeholder
-  while IFS= read -r p; do
-    case "${p}" in
-      */.gitkeep) ;;
-      *) echo "    unexpected file in gm/secrets/: ${p##*/gm/secrets/}"; good=0;;
-    esac
-  done < <(find "${d}/gm/secrets" -type f 2>/dev/null)
+  done < <(find "${d}/gm/secrets" -mindepth 1 -print 2>/dev/null)
   (( good ))
 }
 
@@ -262,9 +276,9 @@ fake_heal() {
 echo "== the heal checker is non-vacuous (fake-agent negative controls) =="
 fc="${TMPDIR_T}/fake-complete";  fake_heal "${fc}" complete
 if check_instance_healed "${fc}" >/dev/null; then
-  ok "a complete heal is accepted"
+  ok "the unchanged canonical scaffold is accepted"
 else
-  fail "a complete heal was rejected — checker has a false negative"
+  fail "the unchanged canonical scaffold was rejected — checker has a false negative"
 fi
 fi_="${TMPDIR_T}/fake-incomplete"; fake_heal "${fi_}" incomplete
 if check_instance_healed "${fi_}" >/dev/null; then
@@ -293,12 +307,34 @@ if check_instance_healed "${fp}" >/dev/null; then
 else
   ok "non-placeholder gm/plot.md is rejected"
 fi
+fpm="${TMPDIR_T}/fake-plot-markdown-only"; fake_heal "${fpm}" complete
+printf '# Plot\n\n## Der Bürgermeister ist der Mörder\n\n> Die Wache deckt ihn.\n' > "${fpm}/gm/plot.md"
+out=$(check_instance_healed "${fpm}"); rc=$?
+if (( rc == 0 )); then
+  fail "plot content written only as headings/blockquotes was accepted"
+elif [[ "${out}" == *"gm/plot.md differs from the canonical template placeholder"* ]]; then
+  ok "plot content using only headings/blockquotes is rejected by byte-exact comparison"
+else
+  fail "headings/blockquotes plot was rejected for the wrong reason: ${out}"
+fi
 fr="${TMPDIR_T}/fake-ruling"; fake_heal "${fr}" complete
 printf '# Rulings\n---\n## R-001 — Blutmagie\nKostet 1 Belastung.\n' > "${fr}/system/rulings.md"
 if check_instance_healed "${fr}" >/dev/null; then
   fail "a house rule in system/rulings.md was accepted"
 else
   ok "rulings.md with an accepted ruling is rejected"
+fi
+frb="${TMPDIR_T}/fake-ruling-before-separator"; fake_heal "${frb}" complete
+sed '$d' "${REPO_ROOT}/system/rulings.md" > "${frb}/system/rulings.md"
+printf '## R-001 — Blutmagie\n- Regelung: Kostet 1 Belastung.\n\n---\n' \
+  >> "${frb}/system/rulings.md"
+out=$(check_instance_healed "${frb}"); rc=$?
+if (( rc == 0 )); then
+  fail "a ruling before the --- separator was accepted"
+elif [[ "${out}" == *"system/rulings.md differs from the canonical template placeholder"* ]]; then
+  ok "a ruling before the --- separator is rejected by byte-exact comparison"
+else
+  fail "pre-separator ruling was rejected for the wrong reason: ${out}"
 fi
 fl="${TMPDIR_T}/fake-roll"; fake_heal "${fl}" complete
 printf '2020-01-01T00:00:00Z | 3d6 | dice=[6,6,6] | total=18 | reason=fake\n' > "${fl}/journal/rolls.log"
@@ -322,6 +358,40 @@ if check_instance_healed "${fg}" >/dev/null; then
   fail "a stray file in gm/secrets/ was accepted"
 else
   ok "gm/secrets/ with anything beyond .gitkeep is rejected"
+fi
+fkg="${TMPDIR_T}/fake-nonempty-gitkeep"; fake_heal "${fkg}" complete
+printf 'verstecktes Geheimnis\n' > "${fkg}/gm/secrets/.gitkeep"
+out=$(check_instance_healed "${fkg}"); rc=$?
+if (( rc == 0 )); then
+  fail "a non-empty gm/secrets/.gitkeep was accepted"
+elif [[ "${out}" == *"gm/secrets/.gitkeep must be an empty regular file"* ]]; then
+  ok "a secret hidden in non-empty gm/secrets/.gitkeep is rejected"
+else
+  fail "non-empty gm/secrets/.gitkeep was rejected for the wrong reason: ${out}"
+fi
+fnw="${TMPDIR_T}/fake-nested-world-symlink"; fake_heal "${fnw}" complete
+mkdir -p "${fnw}/world/region" "${TMPDIR_T}/ext-nested-world"
+printf 'versteckter NSC\n' > "${TMPDIR_T}/ext-nested-world/npc.md"
+ln -s "${TMPDIR_T}/ext-nested-world" "${fnw}/world/region/versteckt"
+out=$(check_instance_healed "${fnw}"); rc=$?
+if (( rc == 0 )); then
+  fail "a nested symlink under world/ was accepted"
+elif [[ "${out}" == *"symlink(s) in protected scaffold"* ]]; then
+  ok "a nested symlink under world/ is rejected as a symlink"
+else
+  fail "nested world/ symlink was rejected for the wrong reason: ${out}"
+fi
+fns="${TMPDIR_T}/fake-nested-secret-symlink"; fake_heal "${fns}" complete
+mkdir -p "${fns}/gm/secrets/nested" "${TMPDIR_T}/ext-nested-secret"
+printf 'versteckter Twist\n' > "${TMPDIR_T}/ext-nested-secret/twist.md"
+ln -s "${TMPDIR_T}/ext-nested-secret" "${fns}/gm/secrets/nested/versteckt"
+out=$(check_instance_healed "${fns}"); rc=$?
+if (( rc == 0 )); then
+  fail "a nested symlink under gm/secrets/ was accepted"
+elif [[ "${out}" == *"symlink(s) in protected scaffold"* ]]; then
+  ok "a nested symlink under gm/secrets/ is rejected as a symlink"
+else
+  fail "nested gm/secrets/ symlink was rejected for the wrong reason: ${out}"
 fi
 fk="${TMPDIR_T}/fake-notable"; fake_heal "${fk}" complete
 rm -f "${fk}/system/tables/komplikationen.yaml"

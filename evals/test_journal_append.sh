@@ -45,17 +45,26 @@ sl_prefix_ok() {
   head -c "${oldsize}" "${newf}" | cmp -s - "${oldf}"
 }
 
+# sl_git_diff <format> <mode> [<a> <b>] — invoke git diff without an empty
+# argument array. Bash 3.2 treats "${empty_array[@]}" as an unbound variable
+# under set -u, which used to skip every unstaged/worktree check on macOS.
+sl_git_diff() {
+  local format=$1 mode=$2 a=${3:-} b=${4:-}
+  case "${mode}" in
+    index)    git diff "--${format}" --cached HEAD -- "${PATHS[@]}";;
+    worktree) git diff "--${format}" -- "${PATHS[@]}";;
+    range)    git diff "--${format}" "${a}" "${b}" -- "${PATHS[@]}";;
+    *) return 2;;
+  esac
+}
+
 # sl_check_diff <mode> [<a> <b>] — fail on deleted lines, renames, binaries,
 # and non-prefix modifications. Sets SL_CHECKED (files seen). Must NOT be
 # called in a command substitution: the subshell would discard FAILS.
 sl_check_diff() {
   local mode=$1 a=${2:-} b=${3:-}
-  local label=${mode} diffargs=()
-  case "${mode}" in
-    index)    diffargs=(--cached HEAD);;
-    worktree) diffargs=();;
-    range)    diffargs=("${a}" "${b}"); label="${a}..${b}";;
-  esac
+  local label=${mode}
+  [[ "${mode}" == range ]] && label="${a}..${b}"
   local checked=0 added deleted path status_path status
   while IFS=$'\t' read -r added deleted path; do
     [[ -z "${path:-}" ]] && continue
@@ -75,7 +84,7 @@ sl_check_diff() {
     else
       echo "  ok [${label}]: ${path} (+${added}, old is a prefix)"
     fi
-  done < <(git diff --numstat "${diffargs[@]}" -- "${PATHS[@]}")
+  done < <(sl_git_diff numstat "${mode}" "${a}" "${b}")
 
   while IFS= read -r status_path; do
     [[ -z "${status_path}" ]] && continue
@@ -84,7 +93,7 @@ sl_check_diff() {
       D*|R*) echo "FAIL [${label}]: ${status_path} — journal files must not be deleted or renamed (G4)" >&2
              FAILS=$((FAILS+1));;
     esac
-  done < <(git diff --name-status "${diffargs[@]}" -- "${PATHS[@]}")
+  done < <(sl_git_diff name-status "${mode}" "${a}" "${b}")
 
   SL_CHECKED=${checked}
 }
