@@ -42,6 +42,17 @@ and G5 (the player decides everything about their character).
    and `tools/roll.sh` / `tools/oracle.sh` present and executable
    (`chmod +x` if not). If the tools themselves are missing, stop and
    tell the player the instance is incomplete — do not improvise dice.
+
+   Placeholder means placeholder, in a checkable format:
+   - `system/rulings.md`: restore from
+     `examples/mini-campaign/system/rulings.md` (the canonical placeholder),
+     or write the append-only format header ending in the `---` separator
+     with **nothing after it**.
+   - `gm/plot.md`: headings, blockquote notes and `—` placeholders only —
+     no plot content (that is campaign material and comes after the
+     Spec-Gate, G6).
+   - `journal/rolls.log` stays byte-empty; empty `.gitkeep` files are fine
+     as directory keepers.
 3. **Ensure `system/system.md` exists.** Step 1 below offers the default
    system as one of two paths and step 3 edits this file, so it must be
    present. If it is missing, restore the canonical default from

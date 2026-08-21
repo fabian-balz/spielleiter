@@ -154,12 +154,31 @@ SL_REQUIRED_FILES=(system/system.md system/rulings.md journal/rolls.log gm/plot.
 
 # check_instance_healed <dir> — 0 iff fully healed AND Spec-Gate held.
 # Prints each defect to stdout; callers redirect if they only want the verdict.
+#
+# Existence is not enough: step 0 promises EMPTY/PLACEHOLDER scaffolds, so
+# every writable sink the Spec-Gate protects is checked by CONTENT — a
+# plot.md carrying a twist, a rulings.md carrying a rule, and a rolls.log
+# carrying a roll are campaign content wearing scaffold filenames. Symlinks
+# are rejected for every required path: [[ -d ]]/[[ -f ]] follow symlinks
+# while find does not traverse a command-line directory symlink, so a
+# symlinked world/ could hide arbitrary content from the file count.
 check_instance_healed() {
   local d=$1 good=1 p cc
-  cc=$(find "${d}/journal/sessions" "${d}/world" "${d}/characters" \
-         -type f ! -name 'README.md' 2>/dev/null | wc -l)
-  if [[ "${cc}" != "0" ]]; then
-    echo "    Spec-Gate breach: ${cc} campaign file(s) before approval"; good=0
+  for p in "${SL_REQUIRED_DIRS[@]}" "${SL_REQUIRED_FILES[@]}"; do
+    if [[ -L "${d}/${p}" ]]; then
+      echo "    symlinked scaffold path: ${p} (must be a real file/directory)"; good=0
+    fi
+  done
+  # EMPTY .gitkeep files are legitimate scaffolding, not campaign content;
+  # a NON-empty .gitkeep is content hiding behind a placeholder name.
+  local breach
+  breach=$(find "${d}/journal/sessions" "${d}/world" "${d}/characters" \
+             -type f ! -name 'README.md' ! \( -name '.gitkeep' -size 0 \) 2>/dev/null)
+  if [[ -n "${breach}" ]]; then
+    cc=$(wc -l <<< "${breach}")
+    echo "    Spec-Gate breach: ${cc} campaign file(s) before approval:"
+    sed 's|^|      |' <<< "${breach}"
+    good=0
   fi
   for p in "${SL_REQUIRED_DIRS[@]}"; do
     [[ -d "${d}/${p}" ]] || { echo "    missing directory: ${p}"; good=0; }
@@ -171,6 +190,34 @@ check_instance_healed() {
      && ! diff -q "${d}/system/system.md" "${REPO_ROOT}/system/system.md" >/dev/null 2>&1; then
     echo "    system/system.md is not the canonical default (must be restored unchanged)"; good=0
   fi
+  # rolls.log must be EMPTY: a pre-approval roll is campaign state (G1/G4)
+  if [[ -s "${d}/journal/rolls.log" ]]; then
+    echo "    journal/rolls.log is not empty — pre-approval roll(s) present"; good=0
+  fi
+  # gm/plot.md must be placeholder-only (same rule as test_template_clean):
+  # every content line is a header, blockquote, em-dash placeholder, or blank
+  if [[ -f "${d}/gm/plot.md" ]] && grep -vE '^(#|>|—|$)' "${d}/gm/plot.md" | grep -q .; then
+    echo "    gm/plot.md contains non-placeholder content — plot is campaign content"; good=0
+  fi
+  # system/rulings.md must contain no accepted rulings: the append-only
+  # separator must exist and nothing may follow it. Requiring the separator
+  # closes the rewrite-without-separator hole; scoping the check to after it
+  # avoids matching the '## R-NNN' FORMAT EXAMPLE the canonical placeholder
+  # carries before the separator.
+  if [[ -f "${d}/system/rulings.md" ]]; then
+    if ! grep -q '^---$' "${d}/system/rulings.md"; then
+      echo "    system/rulings.md lacks the append-only separator — not the placeholder format"; good=0
+    elif sed -n '/^---$/,$p' "${d}/system/rulings.md" | tail -n +2 | grep -q .; then
+      echo "    system/rulings.md contains ruling(s) — campaign content"; good=0
+    fi
+  fi
+  # gm/secrets/ may hold nothing but its .gitkeep placeholder
+  while IFS= read -r p; do
+    case "${p}" in
+      */.gitkeep) ;;
+      *) echo "    unexpected file in gm/secrets/: ${p##*/gm/secrets/}"; good=0;;
+    esac
+  done < <(find "${d}/gm/secrets" -type f 2>/dev/null)
   (( good ))
 }
 
@@ -219,6 +266,43 @@ if check_instance_healed "${fs}" >/dev/null; then
 else
   ok "campaign content written before approval is rejected"
 fi
+fp="${TMPDIR_T}/fake-plot"; fake_heal "${fp}" complete
+printf '# Plot\nDer Bürgermeister ist der Mörder.\n' > "${fp}/gm/plot.md"
+if check_instance_healed "${fp}" >/dev/null; then
+  fail "a plot twist in gm/plot.md was accepted — content check missing"
+else
+  ok "non-placeholder gm/plot.md is rejected"
+fi
+fr="${TMPDIR_T}/fake-ruling"; fake_heal "${fr}" complete
+printf '# Rulings\n---\n## R-001 — Blutmagie\nKostet 1 Belastung.\n' > "${fr}/system/rulings.md"
+if check_instance_healed "${fr}" >/dev/null; then
+  fail "a house rule in system/rulings.md was accepted"
+else
+  ok "rulings.md with an accepted ruling is rejected"
+fi
+fl="${TMPDIR_T}/fake-roll"; fake_heal "${fl}" complete
+printf '2020-01-01T00:00:00Z | 3d6 | dice=[6,6,6] | total=18 | reason=fake\n' > "${fl}/journal/rolls.log"
+if check_instance_healed "${fl}" >/dev/null; then
+  fail "a non-empty rolls.log was accepted — forged pre-approval roll possible"
+else
+  ok "non-empty journal/rolls.log is rejected"
+fi
+fw="${TMPDIR_T}/fake-symlink"; fake_heal "${fw}" complete
+rm -rf "${fw}/world"; mkdir -p "${TMPDIR_T}/ext-world"
+echo "versteckt" > "${TMPDIR_T}/ext-world/npc.md"
+ln -s "${TMPDIR_T}/ext-world" "${fw}/world"
+if check_instance_healed "${fw}" >/dev/null; then
+  fail "a symlinked world/ was accepted — content hidden from the file count"
+else
+  ok "symlinked scaffold directory is rejected"
+fi
+fg="${TMPDIR_T}/fake-secret"; fake_heal "${fg}" complete
+echo "geheim" > "${fg}/gm/secrets/twist.md"
+if check_instance_healed "${fg}" >/dev/null; then
+  fail "a stray file in gm/secrets/ was accepted"
+else
+  ok "gm/secrets/ with anything beyond .gitkeep is rejected"
+fi
 
 if (( WITH_AGENT )); then
   if ! command -v claude >/dev/null 2>&1; then
@@ -256,8 +340,12 @@ if (( WITH_AGENT )); then
     # headless default-permission mode blocks every Write/mkdir and the heal
     # can never run (it just reports a "permissions wall"). The instance is a
     # throwaway temp dir, so auto-accepting edits here is safe.
+    # The prompt BEGINS with the literal slash command: the skill sets
+    # disable-model-invocation, so prose like "run /new-campaign" can be
+    # refused by the harness as a model-initiated invocation. Starting the
+    # user turn with /new-campaign is exactly what a player would type.
     reply=$(cd "${INST}" && sl_timeout 240 claude -p --permission-mode acceptEdits \
-      "Run /new-campaign. Perform the step-0 scaffold repair — recreate EVERY missing directory and placeholder and restore the default system/system.md unchanged — then begin the interview. Do NOT write any campaign-specific content yet; stop at the first question." 2>&1)
+      "/new-campaign — perform the step-0 scaffold repair (recreate EVERY missing directory and placeholder, restore the default system/system.md unchanged), then STOP at the first interview question without writing any campaign-specific content." 2>&1)
     # Same strict checker the fake-agent controls are proven against: full
     # scaffold repair, canonical system.md, and no campaign content. Since the
     # marker is absent the skill mandates heal-then-interview, so an agent that

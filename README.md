@@ -179,9 +179,9 @@ unbounded. It drives two headless turns: the agent must refuse in a template
 repo, and in an instance it must self-heal the scaffold while writing no
 campaign content before approval.
 
-Test-only dependencies beyond the runtime list: `git`, and either
-`sha256sum` (GNU coreutils) or `shasum` (macOS) — the snapshot check accepts
-both. The deterministic suites use only the runtime dependencies.
+Test-only dependencies beyond the runtime list: `git`, `diff` (diffutils),
+and either `sha256sum` (GNU coreutils) or `shasum` (macOS) — the snapshot
+check accepts both.
 
 Behavioral acceptance tests for the agent itself (dice integrity, rules gate,
 player agency, secret leakage) are documented in `evals/MANUAL.md`.
