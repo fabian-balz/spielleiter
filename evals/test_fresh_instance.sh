@@ -169,7 +169,7 @@ SL_PROTECTED_ROOTS=(system world characters journal gm)
 # link entries themselves: find -type f neither reports symlinks nor traverses
 # symlinked directories, so it cannot prove that the protected tree is real.
 check_instance_healed() {
-  local d=$1 good=1 p cc breach symlinks secret_keep secret_entry
+  local d=$1 good=1 p cc symlinks secret_keep secret_entry
   local protected_paths=()
   for p in "${SL_REQUIRED_DIRS[@]}" "${SL_REQUIRED_FILES[@]}"; do
     if [[ -L "${d}/${p}" ]]; then
@@ -188,16 +188,34 @@ check_instance_healed() {
     sed 's|^|      |' <<< "${symlinks}"
     good=0
   fi
-  # EMPTY .gitkeep files are legitimate scaffolding, not campaign content;
-  # a NON-empty .gitkeep is content hiding behind a placeholder name.
-  breach=$(find "${d}/journal/sessions" "${d}/world" "${d}/characters" \
-             -type f ! -name 'README.md' ! \( -name '.gitkeep' -size 0 \) 2>/dev/null)
-  if [[ -n "${breach}" ]]; then
-    cc=$(( $(wc -l <<< "${breach}") ))
-    echo "    Spec-Gate breach: ${cc} campaign file(s) before approval:"
-    sed 's|^|      |' <<< "${breach}"
-    good=0
-  fi
+  # FULL MANIFEST WALK over every regular file in the protected roots.
+  # A selective scan is an allowlist with holes: content in system/, gm/, or
+  # journal/ outside sessions/, and a tampered README.md, all passed a check
+  # that only counted three directories. Here, every file must be one of:
+  #   - a required canonical file (byte-checked further below),
+  #   - a README.md the TEMPLATE ships at that exact path, byte-identical,
+  #   - a byte-empty regular .gitkeep,
+  # and anything else is a Spec-Gate breach by definition.
+  local rel
+  while IFS= read -r p; do
+    rel="${p#${d}/}"
+    case "${rel}" in
+      system/system.md|system/rulings.md|system/tables/komplikationen.yaml|journal/rolls.log|gm/plot.md|gm/secrets/.gitkeep)
+        ;;  # required canonical files, byte-checked below
+      world/README.md|characters/README.md|gm/README.md)
+        if ! cmp -s "${p}" "${REPO_ROOT}/${rel}"; then
+          echo "    ${rel} differs from the template original (content smuggled into a README)"; good=0
+        fi;;
+      *README.md)
+        echo "    unexpected README.md in protected scaffold: ${rel}"; good=0;;
+      *.gitkeep)
+        if [[ -s "${p}" ]]; then
+          echo "    non-empty .gitkeep: ${rel}"; good=0
+        fi;;
+      *)
+        echo "    Spec-Gate breach: unexpected file before approval: ${rel}"; good=0;;
+    esac
+  done < <(find "${protected_paths[@]}" -type f 2>/dev/null)
   for p in "${SL_REQUIRED_DIRS[@]}"; do
     [[ -d "${d}/${p}" ]] || { echo "    missing directory: ${p}"; good=0; }
   done
@@ -399,6 +417,46 @@ if check_instance_healed "${fk}" >/dev/null; then
   fail "a heal without komplikationen.yaml was accepted — the default system cites it"
 else
   ok "missing default table is rejected"
+fi
+
+# manifest walk: campaign content in ANY protected root must be rejected,
+# and a README is only acceptable as the byte-identical template original
+fh="${TMPDIR_T}/fake-houserule"; fake_heal "${fh}" complete
+printf '# Hausregel\nBlutmagie kostet 1 Belastung.\n' > "${fh}/system/house-rules.md"
+if check_instance_healed "${fh}" >/dev/null; then
+  fail "a house-rule file under system/ was accepted"
+else
+  ok "extra file under system/ is rejected"
+fi
+fgm="${TMPDIR_T}/fake-gmtwist"; fake_heal "${fgm}" complete
+printf 'Der Bürgermeister ist der Mörder.\n' > "${fgm}/gm/twist.md"
+if check_instance_healed "${fgm}" >/dev/null; then
+  fail "a plot twist file under gm/ was accepted"
+else
+  ok "extra file under gm/ is rejected"
+fi
+frm="${TMPDIR_T}/fake-readme"; fake_heal "${frm}" complete
+printf '# Welt\nDas Dorf liegt am Moor.\n' > "${frm}/world/README.md"
+if check_instance_healed "${frm}" >/dev/null; then
+  fail "a tampered world/README.md was accepted"
+else
+  ok "tampered world/README.md is rejected"
+fi
+fj="${TMPDIR_T}/fake-journal"; fake_heal "${fj}" complete
+printf 'Kampagnenzustand: 2 Belastung.\n' > "${fj}/journal/hidden.md"
+if check_instance_healed "${fj}" >/dev/null; then
+  fail "a stray file under journal/ (outside sessions/) was accepted"
+else
+  ok "extra file under journal/ is rejected"
+fi
+fok="${TMPDIR_T}/fake-readme-ok"; fake_heal "${fok}" complete
+cp "${REPO_ROOT}/world/README.md"      "${fok}/world/README.md"
+cp "${REPO_ROOT}/characters/README.md" "${fok}/characters/README.md"
+cp "${REPO_ROOT}/gm/README.md"         "${fok}/gm/README.md"
+if check_instance_healed "${fok}" >/dev/null; then
+  ok "byte-identical template READMEs are accepted (no false positive)"
+else
+  fail "byte-identical template READMEs were rejected — manifest too strict"
 fi
 
 if (( WITH_AGENT )); then

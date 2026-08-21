@@ -115,6 +115,20 @@ else
   done < "${SNAP}"
 fi
 
+# 9b. The placeholder templates bundled with /new-campaign must not drift
+#     from the canonical files — the skill restores byte-exact from them.
+for pair in ".claude/skills/new-campaign/templates/plot.md:gm/plot.md" \
+            ".claude/skills/new-campaign/templates/rulings.md:system/rulings.md"; do
+  tpl="${pair%%:*}"; canon="${pair##*:}"
+  if [[ ! -f "${tpl}" ]]; then
+    fail "missing bundled placeholder template: ${tpl}"
+  elif ! cmp -s "${tpl}" "${canon}"; then
+    fail "bundled template ${tpl} drifted from canonical ${canon}"
+  else
+    ok "bundled template matches canonical: ${tpl}"
+  fi
+done
+
 # 10. Only the shipped default table is present
 while IFS= read -r t; do
   case "${t}" in

@@ -38,25 +38,29 @@ and G5 (the player decides everything about their character).
    even a minimal copy. Ensure these exist, creating empty/placeholder
    versions of whatever is missing: `system/` (+ `system/tables/`,
    `system/rulings.md`), `world/`, `characters/`, `journal/sessions/`,
-   an empty `journal/rolls.log`, `gm/` (+ `gm/plot.md`, `gm/secrets/`),
+   an empty `journal/rolls.log`, `gm/` (+ `gm/plot.md`, `gm/secrets/`
+   containing an **empty `gm/secrets/.gitkeep`**),
    and `tools/roll.sh` / `tools/oracle.sh` present and executable
    (`chmod +x` if not). If the tools themselves are missing, stop and
    tell the player the instance is incomplete — do not improvise dice.
 
-   Placeholder means placeholder, in a checkable format:
-   - `system/rulings.md`: restore from
-     `examples/mini-campaign/system/rulings.md` (the canonical placeholder),
-     or write the append-only format header ending in the `---` separator
-     with **nothing after it**.
+   **Placeholders are restored byte-exact, never re-authored.** The
+   canonical files ship with this skill under
+   `.claude/skills/new-campaign/templates/` — copy them verbatim
+   (`cp`, not retyping):
+   - `system/rulings.md` ← `templates/rulings.md`
+     (fallback: `examples/mini-campaign/system/rulings.md`, same bytes).
+   - `gm/plot.md` ← `templates/plot.md`. Never write your own plot
+     placeholder — any self-authored wording, headings included, fails the
+     byte check and risks smuggling content past the Spec-Gate (G6).
    - `system/tables/komplikationen.yaml`: restore **unchanged** from
      `examples/mini-campaign/system/tables/komplikationen.yaml` — the
      default system's success-with-cost rule cites this table, so a heal
      without it leaves `system.md` referencing a table that cannot roll.
-   - `gm/plot.md`: headings, blockquote notes and `—` placeholders only —
-     no plot content (that is campaign material and comes after the
-     Spec-Gate, G6).
-   - `journal/rolls.log` stays byte-empty; empty `.gitkeep` files are fine
-     as directory keepers.
+   - `journal/rolls.log` stays byte-empty; `.gitkeep` files must be empty.
+   - Create **no other files** under `system/`, `world/`, `characters/`,
+     `journal/`, or `gm/` before the Spec-Gate — the whole scaffold is an
+     exact manifest, not a theme.
 3. **Ensure `system/system.md` exists.** Step 1 below offers the default
    system as one of two paths and step 3 edits this file, so it must be
    present. If it is missing, restore the canonical default from
