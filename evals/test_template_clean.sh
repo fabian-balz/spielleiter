@@ -17,7 +17,7 @@ fail() { echo "FAIL: $1" >&2; FAILS=$((FAILS+1)); }
 ok()   { echo "  ok: $1"; }
 
 # 1. No session files in the root journal
-sessions=$(find journal/sessions -type f ! -name '.gitkeep' 2>/dev/null | wc -l)
+sessions=$(( $(find journal/sessions -type f ! -name '.gitkeep' 2>/dev/null | wc -l) ))
 if (( sessions > 0 )); then
   fail "journal/sessions/ contains ${sessions} session file(s)"
 else
@@ -33,7 +33,7 @@ fi
 
 # 3. No entity files beyond the convention READMEs
 for dir in world characters; do
-  extra=$(find "${dir}" -type f ! -name 'README.md' 2>/dev/null | wc -l)
+  extra=$(( $(find "${dir}" -type f ! -name 'README.md' 2>/dev/null | wc -l) ))
   if (( extra > 0 )); then
     fail "${dir}/ contains ${extra} file(s) beyond README.md:"$'\n'"$(find "${dir}" -type f ! -name 'README.md')"
   else

@@ -48,6 +48,10 @@ and G5 (the player decides everything about their character).
      `examples/mini-campaign/system/rulings.md` (the canonical placeholder),
      or write the append-only format header ending in the `---` separator
      with **nothing after it**.
+   - `system/tables/komplikationen.yaml`: restore **unchanged** from
+     `examples/mini-campaign/system/tables/komplikationen.yaml` — the
+     default system's success-with-cost rule cites this table, so a heal
+     without it leaves `system.md` referencing a table that cannot roll.
    - `gm/plot.md`: headings, blockquote notes and `—` placeholders only —
      no plot content (that is campaign material and comes after the
      Spec-Gate, G6).

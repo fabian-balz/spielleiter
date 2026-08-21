@@ -63,6 +63,17 @@ git -C "${REPO}" add "journal/sessions/session-001.md"
 printf 'Zeile 1\nZeile 2\nZeile 3\nZeile 4\n' > "${SESSION}"
 expect 1 "rewrite staged, worktree restored (masked MM)"
 
+# insertion in the MIDDLE: numstat reports it as pure additions ("N 0"),
+# so only the byte-prefix check can catch it
+printf 'Zeile 1\nEINGESCHOBEN\nZeile 2\nZeile 3\nZeile 4\n' > "${SESSION}"
+expect 1 "mid-file insertion (unstaged; numstat says additions only)"
+printf 'Zeile 1\nEINGESCHOBEN\nZeile 2\nZeile 3\nZeile 4\n' > "${SESSION}"
+git -C "${REPO}" add "journal/sessions/session-001.md"
+expect 1 "mid-file insertion (staged)"
+# prepending at the very top is the same class
+printf 'GANZ OBEN\nZeile 1\nZeile 2\nZeile 3\nZeile 4\n' > "${SESSION}"
+expect 1 "prepend at top of file"
+
 rm -f "${SESSION}";                                                    expect 1 "session file deleted"
 
 # a NEWLY ADDED binary file: journal/ is text-only, so even an addition is

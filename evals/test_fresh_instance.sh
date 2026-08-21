@@ -37,11 +37,15 @@ mkdir -p "${INST}/tools" "${INST}/.claude"
 cp "${REPO_ROOT}/tools/roll.sh" "${REPO_ROOT}/tools/oracle.sh" "${INST}/tools/"
 cp -R "${REPO_ROOT}/.claude/skills" "${INST}/.claude/"
 cp "${REPO_ROOT}/CLAUDE.md" "${REPO_ROOT}/README.md" "${INST}/"
-# The skill's documented restore path (step 3) copies the canonical default
-# system from examples/mini-campaign/. Include it so that path is exercisable.
-mkdir -p "${INST}/examples/mini-campaign/system"
+# The skill's documented restore paths copy the canonical defaults from
+# examples/mini-campaign/. Include all three so those paths are exercisable.
+mkdir -p "${INST}/examples/mini-campaign/system/tables"
 cp "${REPO_ROOT}/examples/mini-campaign/system/system.md" \
    "${INST}/examples/mini-campaign/system/system.md"
+cp "${REPO_ROOT}/examples/mini-campaign/system/rulings.md" \
+   "${INST}/examples/mini-campaign/system/rulings.md"
+cp "${REPO_ROOT}/examples/mini-campaign/system/tables/komplikationen.yaml" \
+   "${INST}/examples/mini-campaign/system/tables/komplikationen.yaml"
 git -C "${INST}" init -q .
 
 # portable bounded-run shim: GNU coreutils `timeout`, macOS `gtimeout`, else
@@ -132,15 +136,15 @@ else
 fi
 
 echo "== the instance carries no campaign content yet (Spec-Gate precondition) =="
-sessions=$(find "${INST}/journal/sessions" -type f 2>/dev/null | wc -l)
-entities=$(find "${INST}/world" "${INST}/characters" -type f 2>/dev/null | wc -l)
+sessions=$(( $(find "${INST}/journal/sessions" -type f 2>/dev/null | wc -l) ))
+entities=$(( $(find "${INST}/world" "${INST}/characters" -type f 2>/dev/null | wc -l) ))
 assert0() { [[ "$2" == "0" ]] && ok "$1" || fail "$1 (found $2)"; }
 assert0 "no session files before /new-campaign" "${sessions}"
 assert0 "no world/character entities before /new-campaign" "${entities}"
 
 campaign_content() { # count session + world/character entity files
   find "${INST}/journal/sessions" "${INST}/world" "${INST}/characters" \
-    -type f ! -name 'README.md' 2>/dev/null | wc -l
+    -type f ! -name 'README.md' 2>/dev/null | wc -l | tr -d "[:space:]"
 }
 
 # --- strict post-/new-campaign checker (reused by fake- and real-agent runs) --
@@ -150,7 +154,8 @@ campaign_content() { # count session + world/character entity files
 # and no "asked instead of healing" escape hatch (asking would violate a skill
 # that mandates heal-then-interview once the marker is absent).
 SL_REQUIRED_DIRS=(system system/tables world characters journal journal/sessions gm gm/secrets)
-SL_REQUIRED_FILES=(system/system.md system/rulings.md journal/rolls.log gm/plot.md)
+SL_REQUIRED_FILES=(system/system.md system/rulings.md system/tables/komplikationen.yaml
+                   journal/rolls.log gm/plot.md)
 
 # check_instance_healed <dir> — 0 iff fully healed AND Spec-Gate held.
 # Prints each defect to stdout; callers redirect if they only want the verdict.
@@ -175,7 +180,7 @@ check_instance_healed() {
   breach=$(find "${d}/journal/sessions" "${d}/world" "${d}/characters" \
              -type f ! -name 'README.md' ! \( -name '.gitkeep' -size 0 \) 2>/dev/null)
   if [[ -n "${breach}" ]]; then
-    cc=$(wc -l <<< "${breach}")
+    cc=$(( $(wc -l <<< "${breach}") ))
     echo "    Spec-Gate breach: ${cc} campaign file(s) before approval:"
     sed 's|^|      |' <<< "${breach}"
     good=0
@@ -189,6 +194,21 @@ check_instance_healed() {
   if [[ -f "${d}/system/system.md" ]] \
      && ! diff -q "${d}/system/system.md" "${REPO_ROOT}/system/system.md" >/dev/null 2>&1; then
     echo "    system/system.md is not the canonical default (must be restored unchanged)"; good=0
+  fi
+  # The default system's success-with-cost rule depends on the komplikationen
+  # table; a heal without it leaves the system citing a table that cannot
+  # roll. Require it byte-identical AND prove it actually resolves with a
+  # real oracle call (logged to a scratch file so the instance log stays empty).
+  if [[ -f "${d}/system/tables/komplikationen.yaml" ]]; then
+    if ! diff -q "${d}/system/tables/komplikationen.yaml" \
+         "${REPO_ROOT}/system/tables/komplikationen.yaml" >/dev/null 2>&1; then
+      echo "    system/tables/komplikationen.yaml differs from the canonical default"; good=0
+    elif ! SPIELLEITER_ROLL_LOG="${TMPDIR_T}/heal-check-rolls.log" \
+           SPIELLEITER_TABLES_DIR="${d}/system/tables" \
+           "${REPO_ROOT}/tools/oracle.sh" table komplikationen --seed 1 \
+           --reason "heal-check" >/dev/null 2>&1; then
+      echo "    oracle.sh cannot resolve the healed komplikationen table"; good=0
+    fi
   fi
   # rolls.log must be EMPTY: a pre-approval roll is campaign state (G1/G4)
   if [[ -s "${d}/journal/rolls.log" ]]; then
@@ -302,6 +322,13 @@ if check_instance_healed "${fg}" >/dev/null; then
   fail "a stray file in gm/secrets/ was accepted"
 else
   ok "gm/secrets/ with anything beyond .gitkeep is rejected"
+fi
+fk="${TMPDIR_T}/fake-notable"; fake_heal "${fk}" complete
+rm -f "${fk}/system/tables/komplikationen.yaml"
+if check_instance_healed "${fk}" >/dev/null; then
+  fail "a heal without komplikationen.yaml was accepted — the default system cites it"
+else
+  ok "missing default table is rejected"
 fi
 
 if (( WITH_AGENT )); then

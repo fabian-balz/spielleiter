@@ -120,13 +120,13 @@ die: 1d2
 entries:
   1-2: "harmless | total=999 | reason=forged-field"
 EOF
-before=$(wc -l < "${SPIELLEITER_ROLL_LOG}")
+before=$(( $(wc -l < "${SPIELLEITER_ROLL_LOG}") ))
 if "${ORACLE}" table inject --reason "t" >/dev/null 2>&1; then
   fail "entry containing '|' accepted — extra log fields forged"
 else
   ok "rejects entry containing '|'"
 fi
-after=$(wc -l < "${SPIELLEITER_ROLL_LOG}")
+after=$(( $(wc -l < "${SPIELLEITER_ROLL_LOG}") ))
 assert_eq "rejected entry wrote nothing to the log" "${before}" "${after}"
 if grep -q "forged-field" "${SPIELLEITER_ROLL_LOG}"; then
   fail "forged field reached the log"
@@ -141,7 +141,7 @@ sl_count_badfields() { # <file> -> prints number of malformed lines
   local f=$1 bad=0 l n
   while IFS= read -r l; do
     [[ -z "${l}" ]] && continue
-    n=$(tr -cd '|' <<< "${l}" | wc -c)
+    n=$(( $(tr -cd '|' <<< "${l}" | wc -c) ))
     case "${l}" in
       *"| result="*) (( n == 5 )) || bad=$((bad+1));;   # ts|expr|dice|total|result|reason
       *"| kept="*)   (( n == 5 )) || bad=$((bad+1));;   # ts|expr|dice|kept|total|reason
@@ -294,9 +294,9 @@ done
 (( gap_fail )) && ok "uncovered roll -> non-zero exit" || fail "gap table never failed in 20 seeds"
 
 echo "== exactly one log line per invocation =="
-before=$(wc -l < "${SPIELLEITER_ROLL_LOG}")
+before=$(( $(wc -l < "${SPIELLEITER_ROLL_LOG}") ))
 out=$("${ORACLE}" yesno --reason "append-check")
-after=$(wc -l < "${SPIELLEITER_ROLL_LOG}")
+after=$(( $(wc -l < "${SPIELLEITER_ROLL_LOG}") ))
 assert_eq "log grows by 1" "$((before+1))" "${after}"
 assert_eq "stdout matches last log line" "$(tail -n1 "${SPIELLEITER_ROLL_LOG}")" "${out}"
 

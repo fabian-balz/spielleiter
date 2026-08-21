@@ -102,7 +102,12 @@ sl_timestamp() { date -u +%Y-%m-%dT%H:%M:%SZ; }
 # Returns non-zero on invalid expr.
 sl_roll_expr() {
   local expr=$1
-  if ! [[ "${expr}" =~ ^([0-9]+)d([0-9]+)(kh([0-9]+))?([+-][0-9]+)?$ ]]; then
+  # Digit counts and no-leading-zeros are enforced IN the regex, before any
+  # arithmetic ever runs: bash integers overflow silently, so a 20-digit
+  # count would wrap (2^64+1 -> 1), roll one die, and log the huge
+  # expression — an audited expr that lies about the executed roll (G1).
+  # Leading zeros would be parsed as octal by (( )) and error out noisily.
+  if ! [[ "${expr}" =~ ^([1-9][0-9]{0,2})d([1-9][0-9]{0,3})(kh([1-9][0-9]{0,2}))?([+-](0|[1-9][0-9]{0,3}))?$ ]]; then
     return 1
   fi
   local count=${BASH_REMATCH[1]} sides=${BASH_REMATCH[2]}
@@ -166,7 +171,9 @@ sl_roll_main() {
   fi
   sl_check_reason "${reason}" || return 2
   if [[ -n "${seed}" ]]; then
-    [[ "${seed}" =~ ^[0-9]+$ ]] || { echo "roll.sh: --seed must be a non-negative integer" >&2; return 2; }
+    # no leading zeros (octal), max 9 digits (< 2^31, no overflow in sl_srand)
+    [[ "${seed}" =~ ^(0|[1-9][0-9]{0,8})$ ]] \
+      || { echo "roll.sh: --seed must be a decimal integer, 0..999999999" >&2; return 2; }
     sl_srand "${seed}"
   fi
 

@@ -205,7 +205,8 @@ sl_oracle_main() {
   done
 
   if [[ -n "${seed}" ]]; then
-    [[ "${seed}" =~ ^[0-9]+$ ]] || { echo "oracle.sh: --seed must be a non-negative integer" >&2; return 2; }
+    [[ "${seed}" =~ ^(0|[1-9][0-9]{0,8})$ ]] \
+      || { echo "oracle.sh: --seed must be a decimal integer, 0..999999999" >&2; return 2; }
     sl_srand "${seed}"
   fi
 

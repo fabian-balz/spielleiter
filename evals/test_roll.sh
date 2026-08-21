@@ -23,7 +23,14 @@ assert_eq() { # desc expected actual
 }
 
 echo "== invalid expressions exit non-zero, log stays untouched =="
-for expr in "" "d6" "2d" "2x6" "abc" "0d6" "2d1" "4d6kh5" "4d6kh0" "1d20++2" "101d6"; do
+# 18446744073709551617 = 2^64+1: bash arithmetic would silently wrap it to 1,
+# roll ONE die, and log the huge expression — an audited expr that lies (G1).
+# Leading zeros would be parsed as octal by (( )). Both are now rejected by
+# the regex itself, before any arithmetic runs.
+for expr in "" "d6" "2d" "2x6" "abc" "0d6" "2d1" "4d6kh5" "4d6kh0" "1d20++2" "101d6" \
+            "18446744073709551617d6" "2d18446744073709551617" "9999999999d6" \
+            "2d6kh18446744073709551617" "2d6+99999999999999999999" \
+            "007d6" "2d06" "4d6kh03" "2d6+007"; do
   if "${ROLL}" "${expr}" >/dev/null 2>&1; then
     fail "invalid expr accepted: '${expr}'"
   else
@@ -33,7 +40,12 @@ done
 if [[ ! -f "${SPIELLEITER_ROLL_LOG}" ]]; then
   fail "log file vanished — later assertions would pass vacuously"
 fi
-assert_eq "no log lines written for invalid exprs" "0" "$(wc -l < "${SPIELLEITER_ROLL_LOG}")"
+assert_eq "no log lines written for invalid exprs" "0" "$(( $(wc -l < "${SPIELLEITER_ROLL_LOG}") ))"
+
+echo "== seed validation: decimal only, bounded =="
+"${ROLL}" 1d6 --seed 007 --reason t >/dev/null 2>&1 && fail "octal-looking seed accepted" || ok "rejects seed with leading zeros"
+"${ROLL}" 1d6 --seed 18446744073709551617 --reason t >/dev/null 2>&1 && fail "overflowing seed accepted" || ok "rejects overflowing seed"
+"${ROLL}" 1d6 --seed 0 --reason t >/dev/null 2>&1 && ok "seed 0 accepted" || fail "seed 0 rejected"
 
 echo "== --seed reproducibility =="
 a=$("${ROLL}" 4d6kh3 --seed 42 --reason "t" | cut -d'|' -f3-)
@@ -74,21 +86,21 @@ assert_eq "10d8 count" "10" "${#ds[@]}"
 assert_eq "10d8 all in 1..8" "1" "${bounds_ok}"
 
 echo "== reason is mandatory, single-line, and cannot forge log entries (G1) =="
-before=$(wc -l < "${SPIELLEITER_ROLL_LOG}")
+before=$(( $(wc -l < "${SPIELLEITER_ROLL_LOG}") ))
 "${ROLL}" 1d6 >/dev/null 2>&1                  && fail "missing reason accepted"  || ok "rejects missing --reason"
 "${ROLL}" 1d6 --reason "" >/dev/null 2>&1      && fail "empty reason accepted"    || ok "rejects empty --reason"
 "${ROLL}" 1d6 --reason "a|b" >/dev/null 2>&1   && fail "pipe in reason accepted"  || ok "rejects '|' in --reason"
 forge=$'harmlos\n2020-01-01T00:00:00Z | 3d6 | dice=[6,6,6] | total=18 | reason=FORGED'
 "${ROLL}" 1d6 --reason "${forge}" >/dev/null 2>&1 && fail "newline reason accepted" || ok "rejects newline in --reason"
 "${ROLL}" 1d6 --reason $'a\rb' >/dev/null 2>&1 && fail "CR in reason accepted"    || ok "rejects CR in --reason"
-after=$(wc -l < "${SPIELLEITER_ROLL_LOG}")
+after=$(( $(wc -l < "${SPIELLEITER_ROLL_LOG}") ))
 assert_eq "rejected reasons wrote nothing to the log" "${before}" "${after}"
 if grep -q "FORGED" "${SPIELLEITER_ROLL_LOG}"; then fail "forged line reached the log"; else ok "no forged line in log"; fi
 
 echo "== exactly one log line appended per invocation, stdout == log line =="
-before=$(wc -l < "${SPIELLEITER_ROLL_LOG}")
+before=$(( $(wc -l < "${SPIELLEITER_ROLL_LOG}") ))
 out=$("${ROLL}" 1d20 --reason "append-check")
-after=$(wc -l < "${SPIELLEITER_ROLL_LOG}")
+after=$(( $(wc -l < "${SPIELLEITER_ROLL_LOG}") ))
 assert_eq "log grows by 1" "$((before+1))" "${after}"
 assert_eq "stdout matches last log line" "$(tail -n1 "${SPIELLEITER_ROLL_LOG}")" "${out}"
 
