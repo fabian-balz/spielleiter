@@ -67,7 +67,7 @@ fi
 
 # 7. Demo identifiers from examples/ must not appear in template-owned files.
 #    (evals/ and docs/adr/ legitimately discuss the demo, so they are exempt.)
-DEMO_IDS='Kaya|Eschenau|Alma|Bren|MOORLICHT-SIGIL-77|Kräuterfrau|Steinfeld'
+DEMO_IDS='Kaya|Eschenau|Alma|Bren|MOORLICHT-SIGIL-77|Kräuterfrau|Steinfeld|Sela|Jorin|Odett|Halvar|Nebelfurt|Brückenturm'
 demo_hits=$(grep -rniE "${DEMO_IDS}" \
   --include='*.md' --include='*.yaml' \
   CLAUDE.md README.md system world characters gm .claude 2>/dev/null || true)
