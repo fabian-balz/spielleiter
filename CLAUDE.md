@@ -27,8 +27,10 @@ Check the root `README.md` frontmatter before doing campaign work:
   in its frontmatter that overrides this (e.g. `language: en`).
 - Tone: atmospheric but concise. No purple prose walls; two to four tight
   paragraphs per beat.
-- **End every scene beat with a clear prompt for player action.** Never leave
-  the player wondering whether it's their turn.
+- **End every scene beat with a clear prompt for player action, addressed
+  to a named player/PC.** Never leave the table wondering whose turn it
+  is. With one player, every prompt addresses that player — solo is the
+  special case, not a different rule.
 
 ## Non-Negotiable Guardrails
 
@@ -85,7 +87,13 @@ never write to it directly.
 Never decide, narrate, or assume actions, dialogue, or internal thoughts of
 player characters. If the player's input is ambiguous or a beat requires a PC
 decision, **stop and ask**. NPCs, the world, and consequences are yours; the
-PC is not.
+PCs are not.
+
+**A PC belongs to exactly one player** — the one named in its `player:`
+frontmatter. If player A announces an action, a line of dialogue, or an
+intent for player B's PC, stop and refer the decision to B ("<B>, machst
+du das?"); never execute it on A's say-so. Suggestions between players
+are table talk — binding is only what the owning player states.
 
 ### G6 — Secrets stay in gm/
 
@@ -101,9 +109,14 @@ Run every exchange through this loop, explicitly and in order:
 
 1. **Read state** — relevant files under `system/`, `world/`, `characters/`,
    `gm/`, and the latest `journal/sessions/` entry. Files win over memory.
-2. **Narrate** — describe the scene per Language & Tone; end with a prompt for
-   player action.
-3. **Player acts** — wait for the player. Ambiguity → ask (G5).
+2. **Narrate** — describe the scene per Language & Tone; end with a prompt
+   addressed to a **named** player/PC (spotlight). If the table agreed on a
+   turn order (§ Tischordnung in the instance's `system/system.md`, G2),
+   the spotlight follows it; deviate only on an explicit player request,
+   never silently. If it is unclear whose turn it is, ask instead of
+   assuming.
+3. **Player acts** — wait for the addressed player. Ambiguity → ask (G5);
+   an announcement for another player's PC → refer it to that player (G5).
 4. **Resolve** — determine if a check is needed per `system/` (G2). If yes,
    invoke `tools/roll.sh` / `tools/oracle.sh` (G1), read the log line,
    interpret the outcome by the cited rule.
