@@ -1,5 +1,5 @@
 ---
-description: Start a new campaign — interview for system, setting, safety tools, and first character; Spec-Gate before writing anything
+description: Start a new campaign — interview for system, setting, safety tools, players and their characters; Spec-Gate before writing anything
 disable-model-invocation: true
 ---
 
@@ -85,6 +85,10 @@ and G5 (the player decides everything about their character).
 Ask, one topic at a time, in the campaign language (German unless told
 otherwise):
 
+0. **Players.** How many players are at the table, and what display name
+   does each go by? The name becomes the PC's `player:` frontmatter value —
+   a nickname is fine, nobody has to use their real name. One player =
+   solo; the per-player passes below then collapse to a single pass.
 1. **Rules system.** Two paths:
    - Player provides rules text (pasted or as file) → distill it into a draft
      for `system/system.md`: dice mechanic, resolution procedure, character
@@ -93,15 +97,29 @@ otherwise):
      `system/system.md` and ask for sign-off (or adjustments).
 2. **Setting.** Genre, tone, starting region, one or two campaign hooks the
    player cares about.
-3. **Safety tools.** Lines (never appears) and veils (fade to black). These
-   go into `system/system.md` § Sicherheit. If the player declines, note
+3. **Safety tools.** Lines (never appears) and veils (fade to black),
+   collected as a **group consensus**: ask every player, and the strictest
+   named boundary binds the whole table — a line named by one player is a
+   line for everyone, no negotiation against the person who set it. These
+   go into `system/system.md` § Sicherheit. If the table declines, note
    "keine" explicitly — do not leave the section as placeholder.
-4. **Initial character.** Guided creation per the agreed character model.
-   The player makes every choice; suggest, never decide (G5).
+4. **Characters.** One guided creation **per player**, each as its own
+   pass per the agreed character model. Only the owning player decides
+   anything about their PC — the others may listen and chat, but every
+   choice is made by that player alone (G5). Suggest, never decide.
+   Record the owner as the PC's `player:` frontmatter field.
+5. **Table order (Tischordnung).** With more than one player, ask how the
+   spotlight passes at this table: round-robin in seating order,
+   GM-directed following the fiction, or free-form. The answer is
+   persisted **after** the Spec-Gate as part of step 3 — as a citable
+   § Tischordnung in the instance's `system/system.md` (G2), so the play
+   loop can follow and quote it. It is campaign content: never write it
+   before approval, and never into the template's default system.
 
 ## 2. Spec-Gate
 
-Present a summary: system draft, setting, lines & veils, character sheet.
+Present a summary: system draft, setting, lines & veils (the table
+consensus), one character sheet per player, and the agreed table order.
 **Wait for explicit approval. Write no campaign-specific content before it
 is given** — no rules, setting, characters, world entities or plot. The only
 writes permitted before this point are the empty scaffolds from step 0, and
@@ -111,13 +129,16 @@ those must have been announced. Revise and re-present on objections.
 
 - `system/system.md` — approved system (keep frontmatter `language:` field
   and the Orakel odds section; the oracle tool's odds must stay documented).
-- `characters/<name>.md` — frontmatter stats per character model + prose.
+  With more than one player, append the agreed table order as a
+  `## Tischordnung` section so it is citable during play (G2).
+- `characters/<name>.md` — one file per PC: frontmatter stats per
+  character model plus the owning player's `player:` field, then prose.
 - `world/` — one file per starting location/NPC/faction the interview
   established, plus one quest file (`status: open`) for the opening hook.
 - `gm/plot.md` — your private campaign outline: hidden truths, prepared
   twists, NPC agendas. Never shown to the player (G6).
 - `journal/sessions/session-000.md` — campaign founding entry: date, system
-  choice, setting summary, character introduction.
+  choice, setting summary, introduction of every PC with its player.
 
 ## 4. Commit
 
