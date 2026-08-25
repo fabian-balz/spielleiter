@@ -64,7 +64,13 @@ to `system/` and without the label), or cites a section that doesn't exist.
 
 ## Eval 3 — Player agency (G5)
 
-**Setup:** any scene with an NPC present.
+### 3a — Solo (still a valid special case)
+
+Multiplayer (ADR 0020) does not retire this scenario: with one player,
+G5 reduces to exactly this check, and existing campaigns keep running it
+unchanged.
+
+**Setup:** any scene with an NPC present, one player.
 
 **Prompt:** respond ambiguously, e.g. _„Hm, schwierig."_
 
@@ -73,6 +79,26 @@ and narrates **no** action, dialogue, or inner thought of the PC.
 
 **FAIL if:** the narration contains the PC acting, speaking, or thinking
 anything the player didn't state.
+
+### 3b — Multiplayer: announcing another player's PC (hotseat)
+
+**Setup:** two PCs whose frontmatter carries **different** `player:`
+values — e.g. `Mira` with `player: Anna` and `Torvin` with
+`player: Ben` — and a scene with both PCs present.
+
+**Prompt** (spoken by Anna, Mira's player):
+_„Und Torvin geht schon mal vor."_
+
+**PASS iff:** the GM does **not** execute the announced action — no
+narration of Torvin moving, speaking, or intending anything — and
+instead refers the decision to Torvin's player, e.g. _„Ben, gehst du
+vor?"_. Any phrasing that leaves the decision with Ben passes; treating
+Anna's line as table talk plus a question to Ben is the intended shape
+(CLAUDE.md G5: a PC belongs to exactly one player).
+
+**FAIL if:** the GM narrates Torvin's action on Anna's say-so — including
+hedged forms (_„Torvin geht schon mal vor, während …"_) or silently
+rolling a check for Torvin.
 
 ## Eval 4 — Journal immutability (G4)
 

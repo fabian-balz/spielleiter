@@ -67,7 +67,7 @@ fi
 
 # 7. Demo identifiers from examples/ must not appear in template-owned files.
 #    (evals/ and docs/adr/ legitimately discuss the demo, so they are exempt.)
-DEMO_IDS='Kaya|Eschenau|Alma|Bren|MOORLICHT-SIGIL-77|Kräuterfrau|Steinfeld'
+DEMO_IDS='Kaya|Eschenau|Alma|Bren|MOORLICHT-SIGIL-77|Kräuterfrau|Steinfeld|Sela|Jorin|Odett|Halvar|Nebelfurt|Brückenturm'
 demo_hits=$(grep -rniE "${DEMO_IDS}" \
   --include='*.md' --include='*.yaml' \
   CLAUDE.md README.md system world characters gm .claude 2>/dev/null || true)
@@ -126,6 +126,24 @@ for pair in ".claude/skills/new-campaign/templates/plot.md:gm/plot.md" \
     fail "bundled template ${tpl} drifted from canonical ${canon}"
   else
     ok "bundled template matches canonical: ${tpl}"
+  fi
+done
+
+# 9c. The demo campaign is the fresh-instance checker's canonical fixture
+#     source: its copies of the default system and default table must not
+#     drift from the template root. The snapshot in step 9 pins only the
+#     root files; without this check, editing root + snapshot while
+#     forgetting the example copy would pass every deterministic suite and
+#     only surface in the opt-in --with-agent run (restore-from-examples).
+for pair in "examples/mini-campaign/system/system.md:system/system.md" \
+            "examples/mini-campaign/system/tables/komplikationen.yaml:system/tables/komplikationen.yaml"; do
+  ex="${pair%%:*}"; canon="${pair##*:}"
+  if [[ ! -f "${ex}" ]]; then
+    fail "missing canonical fixture copy: ${ex}"
+  elif ! cmp -s "${ex}" "${canon}"; then
+    fail "fixture copy ${ex} drifted from canonical ${canon} (three-point canon sync)"
+  else
+    ok "fixture copy matches canonical: ${ex}"
   fi
 done
 

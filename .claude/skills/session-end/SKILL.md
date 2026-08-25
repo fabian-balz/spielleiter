@@ -19,8 +19,10 @@ Close the current play session. All guardrails apply, especially G4
    note to each body. New quests discovered this session get their own file.
 3. **Other state**: verify `characters/` and `world/` reflect everything
    that happened (G3 says this was done during play — this is a final
-   consistency check, not a batch update). Fix discrepancies via file edits
-   and note the correction in the session file.
+   consistency check, not a batch update). Walk `characters/` **PC by
+   PC** — Belastung, inventory, bonds for every character that appeared,
+   not just the most active one. Fix discrepancies via file edits and
+   note the correction in the session file.
 4. **Commit** everything in one commit:
 
    ```

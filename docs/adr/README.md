@@ -38,3 +38,4 @@ Status values: `Accepted`, `Superseded by NNNN`, `Amended by NNNN`,
 - [0017 — Confinement checks need an independent root; checks need real subjects](0017-independent-path-roots-and-non-vacuous-checks.md)
 - [0018 — Deny the subagent tool under every name it goes by](0018-recap-tool-denial-across-harnesses.md)
 - [0019 — The pre-approval scaffold is a byte-exact, default-deny manifest](0019-spec-gate-scaffold-manifest.md)
+- [0020 — Multiplayer interaction model: hotseat](0020-multiplayer-hotseat.md)

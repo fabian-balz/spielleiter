@@ -7,7 +7,8 @@ template: true
 An agentic Game Master for pen & paper RPGs, running inside
 [Claude Code](https://claude.com/claude-code). A campaign repository is the
 campaign world: all state lives in versioned files, git history is campaign
-history. v1 targets **solo play** and is system-agnostic.
+history. v1 targets **solo and hotseat play** (one shared table, see
+[Playing](#playing)) and is system-agnostic.
 
 > **This repository is a template, not a campaign.** You don't play here —
 > you create a private *instance* per campaign (see
@@ -15,8 +16,8 @@ history. v1 targets **solo play** and is system-agnostic.
 > there. No campaign content ever lands in the template; an executable
 > check (`evals/test_template_clean.sh`) enforces this, and `/new-campaign`
 > refuses to run while the `template: true` marker at the top of this file
-> is present. The only campaign in this repo is the curated demo under
-> `examples/mini-campaign/`.
+> is present. The only campaign content in this repo are the curated demos
+> under `examples/`: the solo mini-campaign and the hotseat scene.
 
 **Core principle:** the agent narrates and interprets. It never generates
 randomness (dice come from `tools/`), never invents rules (rules live in
@@ -42,7 +43,7 @@ spielleiter/
 │   ├── roll.sh            # Dice roller
 │   └── oracle.sh          # Solo-play oracle + table lookup
 ├── evals/                 # Acceptance tests (executable + manual scenarios)
-├── examples/              # Demo mini-campaign with one full solo session
+├── examples/              # Demos: solo mini-campaign + hotseat scene
 └── docs/adr/              # Architecture Decision Records (template development)
 ```
 
@@ -94,6 +95,16 @@ runtime.
 - `/session-start` — recap + opening scene. Play.
 - `/session-end` — session summary, quest updates, one commit per session.
 - `/recap` — read-only campaign summary any time.
+
+### Hotseat multiplayer
+
+Several players can share one campaign: one Claude session, one
+repository, one table device; players announce their PCs' actions in
+turn and the GM session rolls and journals (ADR 0020). One convention to
+agree on before play: **only the chat is the game table.** On the table
+device `gm/` is necessarily decrypted so the GM session can read it —
+git-crypt protects the *remote* repository, guardrail G6 protects the
+*narration*. Whoever browses the files at the table spoils themselves.
 
 ### Dice & oracle (also usable by hand)
 

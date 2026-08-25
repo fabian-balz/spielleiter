@@ -33,7 +33,8 @@ holding in this environment, rather than proceeding on trust.
 2. Present, in the campaign language:
    - **Die Geschichte bisher** — chronological narrative summary, weighted
      toward recent sessions (older sessions compress harder).
-   - **Charaktere** — current condition and notable changes.
+   - **Charaktere** — every PC with its `player:` assignment (from the
+     frontmatter), current condition and notable changes.
    - **Offene Quests** — name, status, last known lead.
    - **Lose Fäden** — unresolved hooks worth remembering.
 3. End by asking whether the player wants to `/session-start`.

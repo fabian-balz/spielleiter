@@ -33,6 +33,13 @@ Die drei Ergebnisse sind überschneidungsfrei — genau einer der Fälle trifft 
 - Kein Wurf ohne Ungewissheit: Triviales gelingt automatisch, Unmögliches
   scheitert automatisch.
 
+**Helfen:** Ein zweiter PC, der plausibel beiträgt und die Konsequenzen
+mitträgt, gibt **+1** auf die Probe — nicht stapelbar, maximal ein Helfer
+pro Probe. Der Bonus zählt zum Würfelergebnis, bevor es mit dem Zielwert
+verglichen wird; die drei Ergebnisfälle (**>** / **=** / **<**) gelten
+unverändert. Bei **Fehlschlag** oder **Erfolg mit Haken** trifft die
+Komplikation Helfer und Geholfenen gemeinsam.
+
 ## Charaktermodell
 
 Drei Attribute, bei Charaktererschaffung verteilt als **+2, +1, +0**:
