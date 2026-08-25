@@ -9,6 +9,7 @@ Beispiel (Default-System, siehe `system/system.md`):
 ```markdown
 ---
 name: <Charaktername>
+player: <Spielername>
 type: pc
 koerper: 1
 geist: 2
@@ -21,6 +22,12 @@ inventar:
 
 Hintergrund, Aussehen, Bindungen …
 ```
+
+`player:` ordnet den PC genau **einem** Spieler zu (G5): ein frei
+gewählter Anzeigename — Spitzname genügt, niemand muss seinen Realnamen
+eintragen. Im Solo-Spiel darf das Feld entfallen. In `--reason` der
+Würfel-Tools steht weiterhin der **PC-Name** (pro Spieler eindeutig);
+der Spielername gehört ins Frontmatter, nicht ins Log.
 
 Der Spielleiter entscheidet, erzählt oder denkt **niemals** für diese
 Charaktere (G5).

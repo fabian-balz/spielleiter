@@ -128,6 +128,11 @@ Run every exchange through this loop, explicitly and in order:
 - One entity per file: `world/<entity>.md`, `characters/<name>.md`. YAML
   frontmatter carries machine-readable fields (stats, states, tags), the body
   carries prose. See the README files in each directory.
+- PC files carry a `player:` frontmatter field: a freely chosen display
+  name (no real name required) assigning the PC to exactly **one** player
+  (G5). Solo campaigns may omit it. The `--reason` of the dice tools keeps
+  naming the **PC** — unique per player — never the player; the player
+  name lives in the frontmatter only, not in the log.
 - Quests live in `world/` with a `status:` field (`open`, `active`, `done`,
   `failed`).
 - Random tables: `system/tables/<id>.yaml` with `id`, `die`, `entries`
